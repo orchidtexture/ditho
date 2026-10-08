@@ -131,24 +131,40 @@ float evaluateAurora(vec2 st, float t, float seedOffset) {
   return field;
 }
 
+vec3 getPaletteColor(int idx) {
+  switch (clamp(idx, 0, 7)) {
+    case 0: return u_palette[0];
+    case 1: return u_palette[1];
+    case 2: return u_palette[2];
+    case 3: return u_palette[3];
+    case 4: return u_palette[4];
+    case 5: return u_palette[5];
+    case 6: return u_palette[6];
+    default: return u_palette[7];
+  }
+}
+
 // Quantize scalar field across ordered palette stops
 vec3 mapPalette(float v, float threshold, int ditherMode) {
-  int count = max(2, u_paletteCount);
+  int count = clamp(u_paletteCount, 2, MAX_STOPS);
   float maxIdx = float(count - 1);
   float scaled = clamp(v, 0.0, 1.0) * maxIdx;
   int idx = int(floor(scaled));
   if (idx >= count - 1) {
-    return u_palette[count - 1];
+    return getPaletteColor(count - 1);
   }
   float frac = scaled - float(idx);
 
+  vec3 colA = getPaletteColor(idx);
+  vec3 colB = getPaletteColor(idx + 1);
+
   if (ditherMode == 0) {
     // Undithered continuous interpolation
-    return mix(u_palette[idx], u_palette[idx + 1], frac);
+    return mix(colA, colB, frac);
   } else {
     // Quantized ordered / noise dithering threshold
     float stepVal = step(threshold, frac);
-    return mix(u_palette[idx], u_palette[idx + 1], stepVal);
+    return mix(colA, colB, stepVal);
   }
 }
 
@@ -183,12 +199,14 @@ void main() {
 
     if (u_ditherMode == 1) {
       // Bayer 4x4
-      int idx = (ditherCoord.y % 4) * 4 + (ditherCoord.x % 4);
-      threshold = (float(bayer4[idx]) + 0.5) / 16.0;
+      int bx = int(uint(ditherCoord.x) & 3u);
+      int by = int(uint(ditherCoord.y) & 3u);
+      threshold = (float(bayer4[by * 4 + bx]) + 0.5) / 16.0;
     } else if (u_ditherMode == 2) {
       // Bayer 8x8
-      int idx = (ditherCoord.y % 8) * 8 + (ditherCoord.x % 8);
-      threshold = (float(bayer8[idx]) + 0.5) / 64.0;
+      int bx = int(uint(ditherCoord.x) & 7u);
+      int by = int(uint(ditherCoord.y) & 7u);
+      threshold = (float(bayer8[by * 8 + bx]) + 0.5) / 64.0;
     } else if (u_ditherMode == 3) {
       // Deterministic Static Noise
       threshold = hash2D(ditherCoord, u_seed);

@@ -28,6 +28,13 @@ export function createDither(
 ): DitherInstance {
   let opts = { ...DEFAULT_OPTIONS, ...options };
 
+  let paused = opts.paused;
+  let rafId: number | null = null;
+  let lastTimestamp: number | null = null;
+  let effectiveTime = 0;
+  let isDestroyed = false;
+  let renderer: WebGL2Renderer | null = null;
+
   // Setup host and canvas
   const hostMount = setupHostCanvas(
     element,
@@ -35,13 +42,13 @@ export function createDither(
     opts.resolutionScale,
     (_w, _h, dpr) => {
       // Re-render immediately on resize if paused
-      if (paused) {
+      if (paused && renderer) {
         renderer.render(effectiveTime, dpr);
       }
     }
   );
 
-  const renderer = new WebGL2Renderer(
+  renderer = new WebGL2Renderer(
     hostMount.canvas,
     {
       preset: opts.preset,
@@ -56,16 +63,12 @@ export function createDither(
     },
     () => {
       // When context is restored, draw immediate frame
-      const dims = hostMount.getDimensions();
-      renderer.render(effectiveTime, dims.dpr);
+      if (renderer) {
+        const dims = hostMount.getDimensions();
+        renderer.render(effectiveTime, dims.dpr);
+      }
     }
   );
-
-  let paused = opts.paused;
-  let rafId: number | null = null;
-  let lastTimestamp: number | null = null;
-  let effectiveTime = 0;
-  let isDestroyed = false;
 
   const tick = (now: number) => {
     if (isDestroyed) return;

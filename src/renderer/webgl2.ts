@@ -131,7 +131,7 @@ export class WebGL2Renderer {
     this.uSeedLoc = gl.getUniformLocation(program, 'u_seed');
     this.uPresetLoc = gl.getUniformLocation(program, 'u_preset');
     this.uDitherModeLoc = gl.getUniformLocation(program, 'u_ditherMode');
-    this.uPaletteLoc = gl.getUniformLocation(program, 'u_palette');
+    this.uPaletteLoc = gl.getUniformLocation(program, 'u_palette[0]') ?? gl.getUniformLocation(program, 'u_palette');
     this.uPaletteCountLoc = gl.getUniformLocation(program, 'u_paletteCount');
 
     // Create fullscreen triangle geometry: [-1, -1], [3, -1], [-1, 3]
