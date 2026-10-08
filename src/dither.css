@@ -1,0 +1,22 @@
+/**
+ * Ditho — Animated Dithered Background Library
+ * Host Contract Styles
+ */
+
+.dither-host {
+  position: relative;
+  isolation: isolate;
+  background-color: #0d0f18; /* Host CSS fallback */
+}
+
+.dither-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  clip-path: inset(0 round inherit);
+  display: block;
+}

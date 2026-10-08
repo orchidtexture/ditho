@@ -1,3 +1,4 @@
+import './dither.css';
 import { DitherOptions, DitherInstance, ValidatedDitherOptions } from './core/types';
 import { validateOptions, DEFAULT_OPTIONS } from './core/options';
 import { acquireContextBudget, releaseContextBudget } from './core/budget';
