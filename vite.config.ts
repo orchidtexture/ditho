@@ -22,6 +22,7 @@ export default defineConfig(({ command, mode }) => {
       dts({
         insertTypesEntry: true,
         include: ['src'],
+        exclude: ['src/main.ts'],
       }),
     ],
     build: {

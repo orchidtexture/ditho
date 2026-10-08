@@ -29,7 +29,8 @@
     "build:demo": "vite build --mode demo",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "prepack": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
