@@ -13,6 +13,24 @@ import { PRESETS } from './presets';
 // Set playground budget high enough to support all playground fixtures concurrently
 setContextBudget(24);
 
+// The mascot wears its own Ditho texture, independent of the playground controls.
+const brandLogo = document.getElementById('brand-logo');
+if (brandLogo) {
+  createDither(brandLogo, {
+    preset: 'aurora',
+    colors: ['#9259bd', '#b96dcb', '#df91d4', '#f9b8dc'],
+    dither: 'bayer4',
+    pixelSize: 1,
+    scale: 1.4,
+    intensity: 0.85,
+    speed: 0.12,
+    seed: 132,
+    fpsLimit: 30,
+    maxDpr: 2,
+    reducedMotion: 'system',
+  });
+}
+
 // State for active hero configuration
 let currentOptions: ValidatedDitherOptions = {
   preset: 'aurora',
