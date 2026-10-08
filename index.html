@@ -3,29 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ditho — Phase 2: Visual Language Playground</title>
+    <title>Ditho — Animated Dither Backgrounds</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Top Bar -->
+    <!-- Top Navigation -->
     <header class="playground-header">
       <div class="brand">
         <h1>Ditho</h1>
-        <span class="badge">Phase 2: Visual Language</span>
+        <span class="badge">WebGL2 Library</span>
       </div>
       <div class="header-meta">
-        <span id="meta-scheduler">Loop: <strong id="val-scheduler-status">ACTIVE</strong></span>
-        <span id="meta-budget">Contexts: <strong id="val-budget-count">0 / 8</strong></span>
-        <span id="meta-dpr">DPR: <strong>1.0</strong></span>
-        <span id="meta-viewport">Viewport: <strong>1280×800</strong></span>
-        <span id="webgl-status" style="color: #4ade80;">WebGL2 Active</span>
+        <span id="webgl-status" style="color: #4ade80;">● WebGL2 Active</span>
       </div>
     </header>
 
     <main class="container">
       <!-- Quick Preset Selection Chips -->
       <div class="preset-bar">
-        <span class="preset-bar-label">Curated Presets:</span>
+        <span class="preset-bar-label">Presets:</span>
         <button class="preset-chip active" data-preset-id="aurora">
           <div class="preset-swatch-preview">
             <span class="preset-swatch-dot" style="background: #050814;"></span>
@@ -102,7 +98,7 @@
           </div>
           <div class="telemetry-item">
             <span class="t-label">JS CPU Draw</span>
-            <span class="t-val" id="hud-cpu">0.3 ms</span>
+            <span class="t-val" id="hud-cpu">0.2 ms</span>
           </div>
           <div class="telemetry-item">
             <span class="t-label">GPU Render</span>
@@ -122,7 +118,7 @@
       <!-- Master Control Console -->
       <section class="controls-card">
         <div class="controls-card-header">
-          <h3>Visual Pipeline & Artistic Controls</h3>
+          <h3>Visual Pipeline &amp; Controls</h3>
           <div style="display: flex; gap: 0.5rem;">
             <button class="btn btn-secondary" id="btn-reset-time">Freeze at t=0</button>
             <button class="btn" id="btn-pause">Pause</button>
@@ -326,138 +322,6 @@
               <p class="preset-card-desc">Tracks DOM mutations, attribute updates, and tree changes seamlessly.</p>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Invariants & Determinism Verification Matrix -->
-      <section class="diagnostics-block">
-        <h3>Phase 3 Invariants & Core Library Verification Matrix</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">
-          Automated validation verifying shared scheduling, context budget, reduced-motion policies, and lifecycle teardown.
-        </p>
-
-        <div class="diagnostics-grid">
-          <div class="diag-stat-card">
-            <div class="label">Shared Scheduler Loop</div>
-            <div class="val" id="diag-scheduler-status">ACTIVE (rAF Shared)</div>
-          </div>
-          <div class="diag-stat-card">
-            <div class="label">Context Budget Enforcement</div>
-            <div class="val" id="diag-budget-status">BUDGET ACTIVE</div>
-          </div>
-          <div class="diag-stat-card">
-            <div class="label">Reduced Motion Policy</div>
-            <div class="val" id="diag-motion-status">SYSTEM (OS Synced)</div>
-          </div>
-          <div class="diag-stat-card">
-            <div class="label">Zero-Size Handling</div>
-            <div class="val">PASSED (Safe Collapsed)</div>
-          </div>
-          <div class="diag-stat-card">
-            <div class="label">Page Visibility Pausing</div>
-            <div class="val">PASSED (Tab Synced)</div>
-          </div>
-          <div class="diag-stat-card">
-            <div class="label">Lifecycle Resource Cleanup</div>
-            <div class="val">PASSED (Zero Leaks)</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Representative Workload Benchmark Suite -->
-      <section class="benchmark-card">
-        <div class="benchmark-card-header">
-          <div>
-            <h3>Automated Representative Benchmark Suite</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-              Measures JavaScript frame cost, frame cadence, buffer dimensions, and context count across Phase 4 workloads.
-            </p>
-          </div>
-          <button class="btn btn-secondary" id="btn-run-benchmark">▶ Run Benchmark Suite</button>
-        </div>
-
-        <div id="benchmark-status" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; display: none;">
-          Executing workloads...
-        </div>
-
-        <table class="benchmark-table" id="benchmark-table">
-          <thead>
-            <tr>
-              <th>Workload</th>
-              <th>Dimensions</th>
-              <th>Cadence</th>
-              <th>JS CPU Time</th>
-              <th>GPU Time</th>
-              <th>Contexts</th>
-              <th>Evaluation</th>
-            </tr>
-          </thead>
-          <tbody id="benchmark-tbody">
-            <tr>
-              <td>Desktop Hero (DPR 1.0)</td>
-              <td>1200×600</td>
-              <td>60 FPS</td>
-              <td>~0.3 ms</td>
-              <td>N/A (Opt)</td>
-              <td>1</td>
-              <td><span class="benchmark-badge passed">PASSED (Target Met)</span></td>
-            </tr>
-            <tr>
-              <td>Desktop Hero (DPR 2.0 / Retina)</td>
-              <td>2400×1200 (2.8M px)</td>
-              <td>60 FPS</td>
-              <td>~0.4 ms</td>
-              <td>N/A (Opt)</td>
-              <td>1</td>
-              <td><span class="benchmark-badge passed">PASSED (Target Met)</span></td>
-            </tr>
-            <tr>
-              <td>Mobile Hero (390×600)</td>
-              <td>780×1200</td>
-              <td>60 FPS</td>
-              <td>~0.3 ms</td>
-              <td>N/A (Opt)</td>
-              <td>1</td>
-              <td><span class="benchmark-badge passed">PASSED (Target Met)</span></td>
-            </tr>
-            <tr>
-              <td>Three Visible Cards</td>
-              <td>3 × (800×600)</td>
-              <td>60 FPS</td>
-              <td>~0.8 ms</td>
-              <td>N/A (Opt)</td>
-              <td>3</td>
-              <td><span class="benchmark-badge passed">PASSED (Target Met)</span></td>
-            </tr>
-            <tr>
-              <td>30 FPS Constrained Mode</td>
-              <td>1000×500</td>
-              <td>30 FPS</td>
-              <td>~0.2 ms</td>
-              <td>N/A (Opt)</td>
-              <td>1</td>
-              <td><span class="benchmark-badge passed">PASSED (Throttled)</span></td>
-            </tr>
-            <tr>
-              <td>Reduced Motion (Static Render)</td>
-              <td>1000×500</td>
-              <td>0 FPS (Static)</td>
-              <td>0.0 ms (Idle)</td>
-              <td>0.0 ms</td>
-              <td>1</td>
-              <td><span class="benchmark-badge passed">PASSED (0 Overhead)</span></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="benchmark-recommendations">
-          <h4>Tested Quality &amp; Performance Recommendations</h4>
-          <ul>
-            <li><strong>Desktop Workloads:</strong> Uncapped 60 FPS with DPR 2.0 achieves smooth 60 FPS under &lt; 1ms JavaScript cost per frame.</li>
-            <li><strong>Mobile Devices:</strong> Set <code>maxDpr: 1.5</code> or <code>2.0</code> to bound drawing buffer fillrate on high-density OLED/Retina screens.</li>
-            <li><strong>Constrained / Low-Power Mode:</strong> Use <code>fpsLimit: 30</code> or <code>resolutionScale: 0.75</code> for battery savings with no perceptible artistic degradation.</li>
-            <li><strong>Accessibility &amp; Contrast:</strong> Mark canvases decorative (<code>aria-hidden="true"</code>, <code>role="presentation"</code>, <code>tabindex="-1"</code>). Foreground text must satisfy WCAG AA 4.5:1 contrast against both palette ramp extremes.</li>
-          </ul>
         </div>
       </section>
     </main>
