@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ditho — Phase 1 Playground</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Top Navigation -->
+    <header class="playground-header">
+      <div class="brand">
+        <h1>Ditho</h1>
+        <span class="badge">Phase 1: Proof of Host & Rendering</span>
+      </div>
+      <div class="header-status" id="webgl-status">Checking WebGL2...</div>
+    </header>
+
+    <main class="container">
+      <!-- Fixture 0: Interactive Hero Section -->
+      <section class="hero-host dither-host" id="hero-host">
+        <div class="hero-content">
+          <span class="tag">WebGL2 Background Library</span>
+          <h2>Dithered backgrounds that feel like part of the page.</h2>
+          <p>
+            Mounted directly as a child of the host element. No fullscreen hacks,
+            no synthetic scroll syncing, and zero DOM layout displacement.
+          </p>
+        </div>
+
+        <!-- Hero Control Panel -->
+        <div class="control-panel">
+          <div class="control-group">
+            <label for="colorA">Color A</label>
+            <input type="color" id="colorA" value="#101124" />
+          </div>
+
+          <div class="control-group">
+            <label for="colorB">Color B</label>
+            <input type="color" id="colorB" value="#efb7d2" />
+          </div>
+
+          <div class="control-group">
+            <label for="ditherMode">Dither Mode</label>
+            <select id="ditherMode">
+              <option value="bayer8" selected>Bayer 8×8</option>
+              <option value="bayer4">Bayer 4×4</option>
+              <option value="none">None (Undithered)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="pixelSize">Pixel Size <span id="val-pixelSize">2px</span></label>
+            <input type="range" id="pixelSize" min="1" max="16" step="1" value="2" />
+          </div>
+
+          <div class="control-group">
+            <label for="speed">Speed <span id="val-speed">0.35</span></label>
+            <input type="range" id="speed" min="0" max="2" step="0.05" value="0.35" />
+          </div>
+
+          <div class="control-group">
+            <label for="scale">Scale <span id="val-scale">1.0</span></label>
+            <input type="range" id="scale" min="0.2" max="3" step="0.1" value="1.0" />
+          </div>
+
+          <div class="control-group button-row">
+            <button class="btn" id="btn-pause">Pause</button>
+            <button class="btn" id="btn-context-loss" title="Simulate WEBGL_lose_context">Lose Context</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Host Model Verification Fixtures -->
+      <h2 class="section-title">Host Model & Browser Compositing Verification</h2>
+      <p class="section-desc">
+        Each card below tests a specific DOM compositing invariant required by the architecture specification.
+      </p>
+
+      <div class="fixtures-grid">
+        <!-- Fixture 1: Opaque Ancestor & Rounded Card -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>1. Opaque Ancestor & Stacking Isolation</h3>
+            <p>
+              Tests <code>isolation: isolate</code> inside an opaque parent. Canvas negative z-index (-1) must stay visible above host background but contained within host.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div class="opaque-ancestor-container">
+              <div class="rounded-dither-card dither-host" id="fixture-card-1">
+                <h4>Rounded Card (radius: 20px)</h4>
+                <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.85;">
+                  Notice how canvas corners inherit the 20px border radius without host requiring <code>overflow: hidden</code>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Fixture 2: Nested Scroll Container -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>2. Nested Scroll Container</h3>
+            <p>
+              Tests local DOM subtree attachment. Canvas moves automatically with scroll with zero JavaScript scroll-listener overhead.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div class="scroll-container">
+              <div class="scroll-content">
+                <div class="scrollable-dither-item dither-host" id="fixture-scroll-1">
+                  <strong>Scrollable Item #1</strong>
+                  <p style="font-size: 0.8rem; opacity: 0.85;">Dithered background local to item.</p>
+                </div>
+                <div style="background: #181b2a; padding: 1rem; border-radius: 8px; font-size: 0.85rem;">
+                  Static plain element (divider)
+                </div>
+                <div class="scrollable-dither-item dither-host" id="fixture-scroll-2">
+                  <strong>Scrollable Item #2</strong>
+                  <p style="font-size: 0.8rem; opacity: 0.85;">Second independent local background.</p>
+                </div>
+                <div style="background: #181b2a; padding: 1rem; border-radius: 8px; font-size: 0.85rem;">
+                  Bottom element inside scroll area
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Fixture 3: CSS Transforms -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>3. CSS Transforms & Perspective</h3>
+            <p>
+              Tests CSS <code>transform: rotate(-3deg) skew(-1deg)</code>. GPU compositing handles rotation and scale naturally without canvas distortion.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div class="transform-wrapper">
+              <div class="transformed-dither-card dither-host" id="fixture-transform">
+                <h4>Rotated & Skewed Card</h4>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.85;">
+                  Hover to straighten. Canvas follows CSS transforms seamlessly.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Fixture 4: Overlapping Layers & z-index -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>4. Overlapping Layers & Popovers</h3>
+            <p>
+              Tests child z-index layering. Elements with higher z-index (floating badges, popovers) must cleanly layer above the canvas.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div class="overlapping-stage">
+              <div class="layer-base-card dither-host" id="fixture-overlap">
+                <h4>Base Layer</h4>
+                <p style="font-size: 0.85rem; opacity: 0.85;">Canvas sits at local z-index: -1.</p>
+              </div>
+              <div class="layer-floating-badge">z-index: 10 Badge</div>
+              <div class="layer-overlapping-pill">z-index: 5 Overlay</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Fixture 5: Click & Focus Interactivity -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>5. Pointer & Focus Pass-through</h3>
+            <p>
+              Tests <code>pointer-events: none</code> and accessibility. Clicks, typing, and focus rings are never intercepted.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div class="interactive-dither-box dither-host" id="fixture-interactive">
+              <input
+                type="text"
+                class="text-input"
+                placeholder="Type here to verify focus ring..."
+                id="test-input"
+              />
+              <div class="interactive-actions">
+                <button class="btn" id="test-click-btn">Click Me</button>
+                <span class="click-counter" id="test-click-display">0 clicks</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Fixture 6: Fallback Background & Context Loss -->
+        <article class="fixture-card">
+          <div class="fixture-header">
+            <h3>6. Graceful CSS Fallback</h3>
+            <p>
+              Tests behavior when WebGL context is lost or unsupported. The host background CSS color shines through without breaking the layout.
+            </p>
+          </div>
+          <div class="fixture-body">
+            <div
+              class="rounded-dither-card dither-host"
+              id="fixture-fallback"
+              style="background: linear-gradient(135deg, #181926 0%, #30263f 100%);"
+            >
+              <h4>Fallback Demonstration</h4>
+              <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.9;">
+                Host has a CSS gradient fallback. Toggle context loss below to observe seamless degradation:
+              </p>
+              <div style="margin-top: 1rem;">
+                <button class="btn" id="btn-toggle-fallback-loss">Trigger Context Loss</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Phase 1 Invariant Checklist Diagnostics -->
+      <section class="diagnostic-panel">
+        <h3 style="font-size: 1.15rem; font-weight: 700;">Phase 1 Verification Matrix</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Automated runtime checks verifying all Phase 1 exit criteria.
+        </p>
+
+        <div class="diagnostic-grid">
+          <div class="diag-item">
+            <div class="label">Local Canvas Attachment</div>
+            <div class="val" id="diag-local-canvas">PASSED</div>
+          </div>
+          <div class="diag-item">
+            <div class="label">Pointer Events (Pass-through)</div>
+            <div class="val" id="diag-pointer-events">PASSED</div>
+          </div>
+          <div class="diag-item">
+            <div class="label">Isolation & Stacking Context</div>
+            <div class="val" id="diag-stacking-context">PASSED</div>
+          </div>
+          <div class="diag-item">
+            <div class="label">Border Radius Inherited</div>
+            <div class="val" id="diag-border-radius">PASSED</div>
+          </div>
+          <div class="diag-item">
+            <div class="label">Scroll Invariant (Zero JS)</div>
+            <div class="val" id="diag-scroll-invariant">PASSED</div>
+          </div>
+          <div class="diag-item">
+            <div class="label">WebGL2 Device Support</div>
+            <div class="val" id="diag-webgl2-support">DETECTING</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

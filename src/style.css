@@ -1,0 +1,514 @@
+/* ==========================================================================
+   Ditho - Host Contract & Core Styles
+   ========================================================================== */
+
+/**
+ * Host element contract:
+ * - Establishes a local positioning context for the absolute canvas.
+ * - Establishes an isolated stacking context (isolation: isolate) so that the
+ *   canvas's negative z-index (-1) stays ABOVE the host's background/borders
+ *   and BELOW the host's children, without escaping behind parent elements.
+ * - Consumers can specify background-color on the host as a fallback if WebGL fails.
+ */
+.dither-host {
+  position: relative;
+  isolation: isolate;
+  background-color: #0d0f18; /* CSS Fallback color */
+}
+
+/**
+ * Canvas child contract:
+ * - Positioned absolutely to completely cover the host.
+ * - Negative stacking index (-1) keeps it behind all child elements.
+ * - pointer-events: none ensures all clicks, hovers, and touches pass directly
+ *   to the host and its contents.
+ * - border-radius: inherit ensures rounded corners match the host element.
+ */
+.dither-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  display: block;
+}
+
+/* ==========================================================================
+   Playground & Test Fixture Styles
+   ========================================================================== */
+
+:root {
+  --bg-page: #08090f;
+  --bg-surface: #121420;
+  --bg-surface-elevated: #1a1e30;
+  --text-main: #f3f4f8;
+  --text-muted: #9aa1be;
+  --accent: #efb7d2;
+  --accent-glow: rgba(239, 183, 210, 0.25);
+  --border: #252a42;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 5rem;
+}
+
+/* Top Navigation Bar */
+.playground-header {
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(8, 9, 15, 0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.brand h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.brand .badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.header-status {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Hero Section */
+.hero-host {
+  border-radius: 24px;
+  padding: 4rem 3rem;
+  min-height: 480px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  margin-bottom: 3rem;
+  overflow: visible; /* Confirming overflow: visible doesn't break canvas radius */
+}
+
+.hero-content {
+  max-width: 600px;
+}
+
+.hero-content .tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.hero-content h2 {
+  font-size: 2.75rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
+.hero-content p {
+  font-size: 1.125rem;
+  color: #e0e2ec;
+  line-height: 1.6;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Control Panel */
+.control-panel {
+  margin-top: 2rem;
+  background-color: rgba(18, 20, 32, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.control-group label {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+}
+
+.control-group input[type="range"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.control-group input[type="color"] {
+  -webkit-appearance: none;
+  border: none;
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.control-group select,
+.btn {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.control-group select:focus,
+.btn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:hover {
+  background-color: #272d47;
+  border-color: #3b436b;
+}
+
+.btn.active {
+  background-color: var(--accent);
+  color: #101124;
+  font-weight: 600;
+  border-color: var(--accent);
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+/* Fixtures Section */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.section-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+
+.fixtures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.fixture-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.fixture-header {
+  margin-bottom: 1.25rem;
+}
+
+.fixture-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.fixture-header p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.fixture-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fixture 1: Opaque Ancestor & Rounded Card */
+.opaque-ancestor-container {
+  background-color: #1f2335;
+  border: 2px solid #333a59;
+  border-radius: 18px;
+  padding: 1.5rem;
+}
+
+.rounded-dither-card {
+  border-radius: 20px;
+  padding: 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Fixture 2: Nested Scroll Container */
+.scroll-container {
+  height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background-color: #0b0d14;
+}
+
+.scroll-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.scrollable-dither-item {
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Fixture 3: Transformed Container */
+.transform-wrapper {
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 800px;
+}
+
+.transformed-dither-card {
+  width: 90%;
+  border-radius: 16px;
+  padding: 2rem;
+  transform: rotate(-3deg) skew(-1deg) scale(0.96);
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+}
+
+.transformed-dither-card:hover {
+  transform: rotate(0deg) skew(0deg) scale(1);
+}
+
+/* Fixture 4: Overlapping Layers */
+.overlapping-stage {
+  position: relative;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-base-card {
+  width: 85%;
+  height: 180px;
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.layer-floating-badge {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: #ffffff;
+  color: #090a10;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+.layer-overlapping-pill {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(18, 20, 32, 0.95);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+  z-index: 5;
+}
+
+/* Fixture 5: Click & Focus Interactivity */
+.interactive-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.interactive-dither-box {
+  border-radius: 16px;
+  padding: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.text-input {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  color: #fff;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.text-input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.interactive-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.click-counter {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+}
+
+/* Diagnostic results block */
+.diagnostic-panel {
+  margin-top: 3rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem;
+}
+
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.diag-item {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 10px;
+}
+
+.diag-item .label {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.diag-item .val {
+  font-size: 1.1rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #4ade80;
+  margin-top: 0.25rem;
+}
+
+.diag-item .val.warn {
+  color: #facc15;
+}
+
+.diag-item .val.error {
+  color: #f87171;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .playground-header {
+    padding: 1rem;
+  }
+  .container {
+    padding: 1rem;
+  }
+  .hero-host {
+    padding: 2.5rem 1.5rem;
+    min-height: auto;
+  }
+  .hero-content h2 {
+    font-size: 2rem;
+  }
+  .control-panel {
+    grid-template-columns: 1fr;
+  }
+}
