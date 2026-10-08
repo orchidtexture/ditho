@@ -11,6 +11,7 @@ export const DEFAULT_OPTIONS: ValidatedDitherOptions = {
   seed: 42,
   maxDpr: 2.0,
   resolutionScale: 1.0,
+  fpsLimit: null,
   reducedMotion: 'system',
   paused: false,
 };
@@ -102,6 +103,15 @@ export function validateOptions(
   if (userOptions.resolutionScale !== undefined) {
     if (typeof userOptions.resolutionScale === 'number' && !isNaN(userOptions.resolutionScale)) {
       merged.resolutionScale = Math.max(0.1, Math.min(1.0, userOptions.resolutionScale));
+    }
+  }
+
+  // fpsLimit (null or number in [1, 120])
+  if (userOptions.fpsLimit !== undefined) {
+    if (userOptions.fpsLimit === null) {
+      merged.fpsLimit = null;
+    } else if (typeof userOptions.fpsLimit === 'number' && !isNaN(userOptions.fpsLimit) && userOptions.fpsLimit > 0) {
+      merged.fpsLimit = Math.max(1, Math.min(120, Math.round(userOptions.fpsLimit)));
     }
   }
 

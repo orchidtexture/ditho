@@ -3,6 +3,7 @@ import {
   DitherMode,
   PresetType,
   DitherOptions,
+  ValidatedDitherOptions,
   ReducedMotionPolicy,
   getActiveContextCount,
   getContextBudget,
@@ -10,12 +11,13 @@ import {
   isSchedulerActive,
 } from './index';
 import { PRESETS } from './presets';
+import { runBenchmarkSuite } from './benchmark/benchmark';
 
 // Set playground budget high enough to support hero, comparison, and gallery cards simultaneously
 setContextBudget(16);
 
 // State for active hero configuration
-let currentOptions: Required<DitherOptions> = {
+let currentOptions: ValidatedDitherOptions = {
   preset: 'aurora',
   colors: ['#050814', '#16235a', '#2f6991', '#88d49e', '#fef9e7'],
   dither: 'bayer8',
@@ -26,6 +28,7 @@ let currentOptions: Required<DitherOptions> = {
   seed: 42,
   maxDpr: 2.0,
   resolutionScale: 1.0,
+  fpsLimit: null,
   reducedMotion: 'system',
   paused: false,
 };
@@ -62,6 +65,8 @@ const inputSeed = document.getElementById('input-seed') as HTMLInputElement;
 const btnRandSeed = document.getElementById('btn-rand-seed') as HTMLButtonElement;
 const selectResScale = document.getElementById('select-res-scale') as HTMLSelectElement;
 const selectReducedMotion = document.getElementById('select-reduced-motion') as HTMLSelectElement;
+const selectFpsLimit = document.getElementById('select-fps-limit') as HTMLSelectElement;
+const selectMaxDpr = document.getElementById('select-max-dpr') as HTMLSelectElement;
 const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
 const btnResetTime = document.getElementById('btn-reset-time') as HTMLButtonElement;
 const btnContextLoss = document.getElementById('btn-context-loss') as HTMLButtonElement;
@@ -240,6 +245,17 @@ selectReducedMotion?.addEventListener('change', (e) => {
   }
 });
 
+selectFpsLimit?.addEventListener('change', (e) => {
+  const val = (e.target as HTMLSelectElement).value;
+  const fpsLimit = val === 'uncapped' ? null : Number(val);
+  updateAllInstances({ fpsLimit: fpsLimit as any });
+});
+
+selectMaxDpr?.addEventListener('change', (e) => {
+  const maxDpr = parseFloat((e.target as HTMLSelectElement).value);
+  updateAllInstances({ maxDpr });
+});
+
 btnPause.addEventListener('click', () => {
   if (heroDither.isPaused()) {
     heroDither.resume();
@@ -399,8 +415,73 @@ function updateHeaderMeta(): void {
     schedEl.textContent = active ? 'ACTIVE' : 'IDLE (Sleeping)';
     schedEl.style.color = active ? '#4ade80' : '#facc15';
   }
+
+  // Update Live Telemetry HUD for Hero Stage
+  const metrics = heroDither.getMetrics();
+  const hudFps = document.getElementById('hud-fps');
+  const hudCpu = document.getElementById('hud-cpu');
+  const hudGpu = document.getElementById('hud-gpu');
+  const hudBuffer = document.getElementById('hud-buffer');
+  const hudPixels = document.getElementById('hud-pixels');
+
+  if (hudFps) {
+    hudFps.textContent = `${metrics.fps} FPS`;
+    hudFps.className = `t-val ${metrics.fps >= 50 ? 'good' : metrics.fps >= 30 ? 'warn' : ''}`;
+  }
+  if (hudCpu) {
+    hudCpu.textContent = `${metrics.frameTimeMs} ms`;
+  }
+  if (hudGpu) {
+    hudGpu.textContent = metrics.gpuTimeMs !== null ? `${metrics.gpuTimeMs} ms` : 'N/A (Timer Query unavail)';
+  }
+  if (hudBuffer) {
+    hudBuffer.textContent = `${metrics.bufferWidth}×${metrics.bufferHeight}`;
+  }
+  if (hudPixels) {
+    hudPixels.textContent = `${(metrics.pixelCount / 1_000_000).toFixed(2)}M px`;
+  }
 }
 
 window.addEventListener('resize', updateHeaderMeta);
 updateHeaderMeta();
-setInterval(updateHeaderMeta, 500);
+setInterval(updateHeaderMeta, 300);
+
+// Benchmark Suite Runner
+const btnRunBenchmark = document.getElementById('btn-run-benchmark') as HTMLButtonElement;
+const benchmarkStatus = document.getElementById('benchmark-status') as HTMLElement;
+const benchmarkTbody = document.getElementById('benchmark-tbody') as HTMLElement;
+
+btnRunBenchmark?.addEventListener('click', async () => {
+  btnRunBenchmark.disabled = true;
+  benchmarkStatus.style.display = 'block';
+
+  try {
+    const report = await runBenchmarkSuite((current, total, name) => {
+      benchmarkStatus.textContent = `Running workload ${current}/${total}: ${name}...`;
+    });
+
+    benchmarkStatus.textContent = `Benchmark completed at ${new Date(report.timestamp).toLocaleTimeString()}! Results updated below:`;
+    benchmarkStatus.style.color = '#4ade80';
+
+    // Render results into table
+    benchmarkTbody.innerHTML = '';
+    report.results.forEach((res) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${res.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${res.description}</span></td>
+        <td>${res.bufferWidth}×${res.bufferHeight} (${(res.pixelCount / 1_000_000).toFixed(2)}M px)</td>
+        <td style="color:${res.fps >= 50 ? '#4ade80' : res.fps >= 30 ? '#facc15' : '#f87171'};font-weight:700;">${res.fps} FPS</td>
+        <td>${res.cpuFrameTimeMs} ms</td>
+        <td>${res.gpuTimeMs !== null ? `${res.gpuTimeMs} ms` : 'N/A'}</td>
+        <td>${res.contextsActive}</td>
+        <td><span class="benchmark-badge ${res.status}">${res.status.toUpperCase()} (${res.notes})</span></td>
+      `;
+      benchmarkTbody.appendChild(tr);
+    });
+  } catch (err) {
+    benchmarkStatus.textContent = `Error running benchmark: ${err}`;
+    benchmarkStatus.style.color = '#f87171';
+  } finally {
+    btnRunBenchmark.disabled = false;
+  }
+});

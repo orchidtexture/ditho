@@ -1,6 +1,6 @@
 import { vertexShaderSource, fragmentShaderSource } from './shaders';
 import { normalizePalette, NormalizedPalette } from './color';
-import { DitherMode, PresetType } from '../core/types';
+import { DitherMode, PresetType, PerformanceMetrics } from '../core/types';
 
 export interface RendererConfig {
   preset: PresetType;
@@ -38,8 +38,19 @@ export class WebGL2Renderer {
   // State
   private isContextLost = false;
   private loseContextExt: any = null;
+  private timerQueryExt: any = null;
+  private activeQuery: WebGLQuery | null = null;
+  private pendingQuery: WebGLQuery | null = null;
+
   private config: RendererConfig;
   private normalizedPalette: NormalizedPalette;
+
+  // Performance telemetry
+  private lastCpuFrameMs = 0;
+  private lastGpuFrameMs: number | null = null;
+  private lastFrameTimestamp = 0;
+  private fpsSmoothed = 60;
+  private frameCount = 0;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -96,6 +107,8 @@ export class WebGL2Renderer {
 
     this.gl = gl;
     this.loseContextExt = gl.getExtension('WEBGL_lose_context');
+    // GPU Timer Query extension (optional telemetry)
+    this.timerQueryExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
 
     // Compile shaders
     const vs = this.compileShader(gl.VERTEX_SHADER, vertexShaderSource);
@@ -125,7 +138,7 @@ export class WebGL2Renderer {
 
     this.program = program;
 
-    // Cache uniform locations
+    // Cache uniform locations (guarantee array index [0] compatibility for Firefox/ANGLE)
     this.uResolutionLoc = gl.getUniformLocation(program, 'u_resolution');
     this.uDprLoc = gl.getUniformLocation(program, 'u_dpr');
     this.uResolutionScaleLoc = gl.getUniformLocation(program, 'u_resolutionScale');
@@ -193,7 +206,22 @@ export class WebGL2Renderer {
   public render(time: number, dpr: number): void {
     if (this.isContextLost || !this.gl || !this.program || !this.vao) return;
 
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     const gl = this.gl;
+
+    // Check previous GPU timer query
+    if (this.timerQueryExt && this.pendingQuery) {
+      const available = gl.getQueryParameter(this.pendingQuery, gl.QUERY_RESULT_AVAILABLE);
+      const disjoint = gl.getParameter(this.timerQueryExt.GPU_DISJOINT_EXT);
+
+      if (available && !disjoint) {
+        const timeElapsedNs = gl.getQueryParameter(this.pendingQuery, gl.QUERY_RESULT);
+        this.lastGpuFrameMs = timeElapsedNs / 1_000_000;
+        gl.deleteQuery(this.pendingQuery);
+        this.pendingQuery = null;
+      }
+    }
+
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.useProgram(this.program);
 
@@ -227,10 +255,52 @@ export class WebGL2Renderer {
     gl.uniform3fv(this.uPaletteLoc, this.normalizedPalette.flatArray);
     gl.uniform1i(this.uPaletteCountLoc, this.normalizedPalette.count);
 
+    // Begin GPU timer query if supported
+    if (this.timerQueryExt && !this.pendingQuery) {
+      this.activeQuery = gl.createQuery();
+      if (this.activeQuery) {
+        gl.beginQuery(this.timerQueryExt.TIME_ELAPSED_EXT, this.activeQuery);
+      }
+    }
+
     // Draw fullscreen triangle
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);
+
+    // End GPU timer query
+    if (this.timerQueryExt && this.activeQuery) {
+      gl.endQuery(this.timerQueryExt.TIME_ELAPSED_EXT);
+      this.pendingQuery = this.activeQuery;
+      this.activeQuery = null;
+    }
+
+    // Telemetry updates
+    const t1 = typeof performance !== 'undefined' ? performance.now() : 0;
+    this.lastCpuFrameMs = t1 - t0;
+
+    if (this.lastFrameTimestamp > 0 && t0 > this.lastFrameTimestamp) {
+      const instantaneousFps = 1000 / (t0 - this.lastFrameTimestamp);
+      // Exponential moving average over ~30 frames
+      this.fpsSmoothed = this.fpsSmoothed * 0.92 + Math.min(120, instantaneousFps) * 0.08;
+    }
+    this.lastFrameTimestamp = t0;
+    this.frameCount++;
+  }
+
+  public getMetrics(dpr: number): PerformanceMetrics {
+    const width = this.gl ? this.gl.drawingBufferWidth : this.canvas.width;
+    const height = this.gl ? this.gl.drawingBufferHeight : this.canvas.height;
+
+    return {
+      fps: Math.round(this.fpsSmoothed),
+      frameTimeMs: Number(this.lastCpuFrameMs.toFixed(2)),
+      gpuTimeMs: this.lastGpuFrameMs !== null ? Number(this.lastGpuFrameMs.toFixed(2)) : null,
+      bufferWidth: width,
+      bufferHeight: height,
+      pixelCount: width * height,
+      dpr,
+    };
   }
 
   public simulateContextLoss(): void {
@@ -252,6 +322,14 @@ export class WebGL2Renderer {
     this.canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
 
     if (this.gl) {
+      if (this.pendingQuery) {
+        this.gl.deleteQuery(this.pendingQuery);
+        this.pendingQuery = null;
+      }
+      if (this.activeQuery) {
+        this.gl.deleteQuery(this.activeQuery);
+        this.activeQuery = null;
+      }
       if (this.vao) {
         this.gl.deleteVertexArray(this.vao);
         this.vao = null;

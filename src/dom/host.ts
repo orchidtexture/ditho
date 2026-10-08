@@ -40,6 +40,7 @@ export function setupHostCanvas(
   canvas.className = 'dither-canvas';
   canvas.setAttribute('aria-hidden', 'true');
   canvas.setAttribute('role', 'presentation');
+  canvas.setAttribute('tabindex', '-1');
 
   // Inline styling guarantees proper layering even before external CSS loads
   canvas.style.position = 'absolute';

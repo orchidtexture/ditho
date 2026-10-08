@@ -132,6 +132,7 @@ export function createDither(
       if (!isIntersecting || !hostMount.hasValidDimensions()) return false;
       return dirty;
     },
+    getFpsLimit: () => opts.fpsLimit,
     measure: () => {
       if (hostMount.measureIfNeeded()) {
         dirty = true;
@@ -204,6 +205,21 @@ export function createDither(
       return false;
     },
 
+    getMetrics() {
+      if (isDestroyed) {
+        return {
+          fps: 0,
+          frameTimeMs: 0,
+          gpuTimeMs: null,
+          bufferWidth: 0,
+          bufferHeight: 0,
+          pixelCount: 0,
+          dpr: 1,
+        };
+      }
+      return renderer.getMetrics(hostMount.getDimensions().dpr);
+    },
+
     simulateContextLoss() {
       renderer.simulateContextLoss();
     },
@@ -242,6 +258,15 @@ function createFallbackInstance(element: HTMLElement): DitherInstance {
     destroy: () => {},
     isPaused: () => true,
     isFallbackActive: () => true,
+    getMetrics: () => ({
+      fps: 0,
+      frameTimeMs: 0,
+      gpuTimeMs: null,
+      bufferWidth: 0,
+      bufferHeight: 0,
+      pixelCount: 0,
+      dpr: 1,
+    }),
     simulateContextLoss: () => {},
     restoreContext: () => {},
   };

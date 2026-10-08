@@ -6,6 +6,8 @@ export interface ScheduledTask {
   isContinuous(): boolean;
   /** Returns whether the task needs a single dirty frame redraw (e.g. option change while paused, resize) */
   isDirty(): boolean;
+  /** Optional target FPS cap */
+  getFpsLimit?(): number | null;
   /** Optional batched measurement phase before drawing */
   measure?(): void;
   /** Draws the frame. delta is 0 for static dirty redraws */
@@ -14,6 +16,7 @@ export interface ScheduledTask {
 
 let nextTaskId = 1;
 const tasks = new Map<number, ScheduledTask>();
+const taskLastRenderTime = new Map<number, number>();
 let rafId: number | null = null;
 let lastTimestamp: number | null = null;
 let unsubscribeVisibility: (() => void) | null = null;
@@ -41,7 +44,22 @@ function tick(now: number): void {
     const dirty = task.isDirty();
 
     if (continuous || dirty) {
-      task.render(continuous ? delta : 0);
+      // Check optional FPS throttle
+      const fpsLimit = task.getFpsLimit ? task.getFpsLimit() : null;
+      let shouldDraw = true;
+
+      if (fpsLimit && fpsLimit > 0 && !dirty) {
+        const minInterval = 1000 / fpsLimit - 1.0; // 1ms tolerance
+        const lastRender = taskLastRenderTime.get(task.id) || 0;
+        if (now - lastRender < minInterval) {
+          shouldDraw = false;
+        }
+      }
+
+      if (shouldDraw) {
+        task.render(continuous ? delta : 0);
+        taskLastRenderTime.set(task.id, now);
+      }
     }
 
     if (task.isContinuous() || task.isDirty()) {
@@ -102,6 +120,7 @@ export function registerScheduledTask(task: Omit<ScheduledTask, 'id'>): { id: nu
     id,
     unregister: () => {
       tasks.delete(id);
+      taskLastRenderTime.delete(id);
       if (tasks.size === 0) {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
