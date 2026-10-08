@@ -3,252 +3,269 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ditho — Phase 1 Playground</title>
+    <title>Ditho — Phase 2: Visual Language Playground</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Top Navigation -->
+    <!-- Top Bar -->
     <header class="playground-header">
       <div class="brand">
         <h1>Ditho</h1>
-        <span class="badge">Phase 1: Proof of Host & Rendering</span>
+        <span class="badge">Phase 2: Visual Language</span>
       </div>
-      <div class="header-status" id="webgl-status">Checking WebGL2...</div>
+      <div class="header-meta">
+        <span id="meta-dpr">DPR: <strong>1.0</strong></span>
+        <span id="meta-viewport">Viewport: <strong>1280×800</strong></span>
+        <span id="webgl-status" style="color: #4ade80;">WebGL2 Active</span>
+      </div>
     </header>
 
     <main class="container">
-      <!-- Fixture 0: Interactive Hero Section -->
-      <section class="hero-host dither-host" id="hero-host">
-        <div class="hero-content">
-          <span class="tag">WebGL2 Background Library</span>
-          <h2>Dithered backgrounds that feel like part of the page.</h2>
-          <p>
-            Mounted directly as a child of the host element. No fullscreen hacks,
-            no synthetic scroll syncing, and zero DOM layout displacement.
+      <!-- Quick Preset Selection Chips -->
+      <div class="preset-bar">
+        <span class="preset-bar-label">Curated Presets:</span>
+        <button class="preset-chip active" data-preset-id="aurora">
+          <div class="preset-swatch-preview">
+            <span class="preset-swatch-dot" style="background: #050814;"></span>
+            <span class="preset-swatch-dot" style="background: #16235a;"></span>
+            <span class="preset-swatch-dot" style="background: #2f6991;"></span>
+            <span class="preset-swatch-dot" style="background: #88d49e;"></span>
+            <span class="preset-swatch-dot" style="background: #fef9e7;"></span>
+          </div>
+          Aurora Borealis
+        </button>
+        <button class="preset-chip" data-preset-id="cyber">
+          <div class="preset-swatch-preview">
+            <span class="preset-swatch-dot" style="background: #180828;"></span>
+            <span class="preset-swatch-dot" style="background: #631858;"></span>
+            <span class="preset-swatch-dot" style="background: #b52f64;"></span>
+            <span class="preset-swatch-dot" style="background: #e26d5c;"></span>
+            <span class="preset-swatch-dot" style="background: #ffcd75;"></span>
+          </div>
+          Cyber Sunset
+        </button>
+        <button class="preset-chip" data-preset-id="ocean">
+          <div class="preset-swatch-preview">
+            <span class="preset-swatch-dot" style="background: #03071e;"></span>
+            <span class="preset-swatch-dot" style="background: #002855;"></span>
+            <span class="preset-swatch-dot" style="background: #023e7d;"></span>
+            <span class="preset-swatch-dot" style="background: #0096c7;"></span>
+            <span class="preset-swatch-dot" style="background: #ade8f4;"></span>
+          </div>
+          Deep Ocean
+        </button>
+        <button class="preset-chip" data-preset-id="monochrome">
+          <div class="preset-swatch-preview">
+            <span class="preset-swatch-dot" style="background: #050508;"></span>
+            <span class="preset-swatch-dot" style="background: #22252e;"></span>
+            <span class="preset-swatch-dot" style="background: #6e7382;"></span>
+            <span class="preset-swatch-dot" style="background: #e4e7eb;"></span>
+          </div>
+          Monochrome Grain
+        </button>
+        <button class="preset-chip" data-preset-id="orchid">
+          <div class="preset-swatch-preview">
+            <span class="preset-swatch-dot" style="background: #0f051d;"></span>
+            <span class="preset-swatch-dot" style="background: #3d0c5a;"></span>
+            <span class="preset-swatch-dot" style="background: #851e7f;"></span>
+            <span class="preset-swatch-dot" style="background: #d14081;"></span>
+            <span class="preset-swatch-dot" style="background: #f5b5c8;"></span>
+          </div>
+          Neon Orchid
+        </button>
+      </div>
+
+      <!-- Hero Showcase Stage -->
+      <section class="hero-stage dither-host" id="hero-stage">
+        <div class="hero-info">
+          <span class="tag" id="hero-tag">Aurora Preset</span>
+          <h2 id="hero-title">Aurora Borealis</h2>
+          <p id="hero-desc">
+            Domain-warped procedural field with rich ribbon transitions and Bayer 8×8 quantization.
           </p>
         </div>
 
-        <!-- Hero Control Panel -->
-        <div class="control-panel">
-          <div class="control-group">
-            <label for="colorA">Color A</label>
-            <input type="color" id="colorA" value="#101124" />
+        <div class="hero-metrics">
+          <div>Mode: <strong id="metric-mode">Bayer 8×8</strong></div>
+          <div>Dither Pixel: <strong id="metric-pixel">2px</strong></div>
+          <div>Seed: <strong id="metric-seed">42</strong></div>
+          <div>Scale: <strong id="metric-scale">1.0</strong></div>
+        </div>
+      </section>
+
+      <!-- Master Control Console -->
+      <section class="controls-card">
+        <div class="controls-card-header">
+          <h3>Visual Pipeline & Artistic Controls</h3>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" id="btn-reset-time">Freeze at t=0</button>
+            <button class="btn" id="btn-pause">Pause</button>
+            <button class="btn btn-secondary" id="btn-context-loss" title="Simulate WEBGL_lose_context">Lose Context</button>
+          </div>
+        </div>
+
+        <div class="controls-grid">
+          <!-- Preset Type -->
+          <div class="control-field">
+            <label for="select-preset">Procedural Preset</label>
+            <select id="select-preset">
+              <option value="aurora" selected>Aurora (Domain-Warped)</option>
+              <option value="waves">Waves (Layered Sine)</option>
+              <option value="gradient">Gradient (Harmonic Angled)</option>
+            </select>
           </div>
 
-          <div class="control-group">
-            <label for="colorB">Color B</label>
-            <input type="color" id="colorB" value="#efb7d2" />
-          </div>
-
-          <div class="control-group">
-            <label for="ditherMode">Dither Mode</label>
-            <select id="ditherMode">
-              <option value="bayer8" selected>Bayer 8×8</option>
-              <option value="bayer4">Bayer 4×4</option>
+          <!-- Dither Mode -->
+          <div class="control-field">
+            <label for="select-dither">Dither Algorithm</label>
+            <select id="select-dither">
+              <option value="bayer8" selected>Bayer 8×8 (Ordered)</option>
+              <option value="bayer4">Bayer 4×4 (Graphic)</option>
+              <option value="noise">Static Noise (Seeded Hash)</option>
               <option value="none">None (Undithered)</option>
             </select>
           </div>
 
-          <div class="control-group">
-            <label for="pixelSize">Pixel Size <span id="val-pixelSize">2px</span></label>
-            <input type="range" id="pixelSize" min="1" max="16" step="1" value="2" />
+          <!-- Pixel Size -->
+          <div class="control-field">
+            <label for="range-pixelsize">Pixel Size <span id="val-pixelsize">2px</span></label>
+            <input type="range" id="range-pixelsize" min="1" max="16" step="1" value="2" />
           </div>
 
-          <div class="control-group">
-            <label for="speed">Speed <span id="val-speed">0.35</span></label>
-            <input type="range" id="speed" min="0" max="2" step="0.05" value="0.35" />
+          <!-- Scale -->
+          <div class="control-field">
+            <label for="range-scale">Field Scale <span id="val-scale">1.0</span></label>
+            <input type="range" id="range-scale" min="0.2" max="3.0" step="0.1" value="1.0" />
           </div>
 
-          <div class="control-group">
-            <label for="scale">Scale <span id="val-scale">1.0</span></label>
-            <input type="range" id="scale" min="0.2" max="3" step="0.1" value="1.0" />
+          <!-- Intensity -->
+          <div class="control-field">
+            <label for="range-intensity">Intensity / Contrast <span id="val-intensity">1.1</span></label>
+            <input type="range" id="range-intensity" min="0.2" max="2.0" step="0.05" value="1.1" />
           </div>
 
-          <div class="control-group button-row">
-            <button class="btn" id="btn-pause">Pause</button>
-            <button class="btn" id="btn-context-loss" title="Simulate WEBGL_lose_context">Lose Context</button>
+          <!-- Speed -->
+          <div class="control-field">
+            <label for="range-speed">Speed <span id="val-speed">0.22</span></label>
+            <input type="range" id="range-speed" min="0" max="1.5" step="0.02" value="0.22" />
+          </div>
+
+          <!-- Seed -->
+          <div class="control-field">
+            <label for="input-seed">Deterministic Seed</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="input-seed" value="42" style="width: 100px;" />
+              <button class="btn btn-secondary" id="btn-rand-seed">🎲 Random</button>
+            </div>
+          </div>
+
+          <!-- Resolution Scale -->
+          <div class="control-field">
+            <label for="select-res-scale">Resolution Scale</label>
+            <select id="select-res-scale">
+              <option value="1.0" selected>1.0 (Full Quality)</option>
+              <option value="0.75">0.75 (Balanced)</option>
+              <option value="0.5">0.5 (Performance)</option>
+              <option value="0.25">0.25 (Retro Low-Res)</option>
+            </select>
+          </div>
+
+          <!-- Dynamic Palette Builder -->
+          <div class="palette-builder">
+            <div class="palette-builder-header">
+              <span>Ordered Palette Ramp (<span id="palette-count">5</span> stops)</span>
+              <button class="btn btn-secondary btn-add-stop" id="btn-add-color">+ Add Color Stop</button>
+            </div>
+            <div class="palette-swatches-row" id="palette-swatches-container">
+              <!-- Dynamically populated -->
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Host Model Verification Fixtures -->
-      <h2 class="section-title">Host Model & Browser Compositing Verification</h2>
-      <p class="section-desc">
-        Each card below tests a specific DOM compositing invariant required by the architecture specification.
-      </p>
-
-      <div class="fixtures-grid">
-        <!-- Fixture 1: Opaque Ancestor & Rounded Card -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>1. Opaque Ancestor & Stacking Isolation</h3>
-            <p>
-              Tests <code>isolation: isolate</code> inside an opaque parent. Canvas negative z-index (-1) must stay visible above host background but contained within host.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div class="opaque-ancestor-container">
-              <div class="rounded-dither-card dither-host" id="fixture-card-1">
-                <h4>Rounded Card (radius: 20px)</h4>
-                <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.85;">
-                  Notice how canvas corners inherit the 20px border radius without host requiring <code>overflow: hidden</code>.
-                </p>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Fixture 2: Nested Scroll Container -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>2. Nested Scroll Container</h3>
-            <p>
-              Tests local DOM subtree attachment. Canvas moves automatically with scroll with zero JavaScript scroll-listener overhead.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div class="scroll-container">
-              <div class="scroll-content">
-                <div class="scrollable-dither-item dither-host" id="fixture-scroll-1">
-                  <strong>Scrollable Item #1</strong>
-                  <p style="font-size: 0.8rem; opacity: 0.85;">Dithered background local to item.</p>
-                </div>
-                <div style="background: #181b2a; padding: 1rem; border-radius: 8px; font-size: 0.85rem;">
-                  Static plain element (divider)
-                </div>
-                <div class="scrollable-dither-item dither-host" id="fixture-scroll-2">
-                  <strong>Scrollable Item #2</strong>
-                  <p style="font-size: 0.8rem; opacity: 0.85;">Second independent local background.</p>
-                </div>
-                <div style="background: #181b2a; padding: 1rem; border-radius: 8px; font-size: 0.85rem;">
-                  Bottom element inside scroll area
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Fixture 3: CSS Transforms -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>3. CSS Transforms & Perspective</h3>
-            <p>
-              Tests CSS <code>transform: rotate(-3deg) skew(-1deg)</code>. GPU compositing handles rotation and scale naturally without canvas distortion.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div class="transform-wrapper">
-              <div class="transformed-dither-card dither-host" id="fixture-transform">
-                <h4>Rotated & Skewed Card</h4>
-                <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.85;">
-                  Hover to straighten. Canvas follows CSS transforms seamlessly.
-                </p>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Fixture 4: Overlapping Layers & z-index -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>4. Overlapping Layers & Popovers</h3>
-            <p>
-              Tests child z-index layering. Elements with higher z-index (floating badges, popovers) must cleanly layer above the canvas.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div class="overlapping-stage">
-              <div class="layer-base-card dither-host" id="fixture-overlap">
-                <h4>Base Layer</h4>
-                <p style="font-size: 0.85rem; opacity: 0.85;">Canvas sits at local z-index: -1.</p>
-              </div>
-              <div class="layer-floating-badge">z-index: 10 Badge</div>
-              <div class="layer-overlapping-pill">z-index: 5 Overlay</div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Fixture 5: Click & Focus Interactivity -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>5. Pointer & Focus Pass-through</h3>
-            <p>
-              Tests <code>pointer-events: none</code> and accessibility. Clicks, typing, and focus rings are never intercepted.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div class="interactive-dither-box dither-host" id="fixture-interactive">
-              <input
-                type="text"
-                class="text-input"
-                placeholder="Type here to verify focus ring..."
-                id="test-input"
-              />
-              <div class="interactive-actions">
-                <button class="btn" id="test-click-btn">Click Me</button>
-                <span class="click-counter" id="test-click-display">0 clicks</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Fixture 6: Fallback Background & Context Loss -->
-        <article class="fixture-card">
-          <div class="fixture-header">
-            <h3>6. Graceful CSS Fallback</h3>
-            <p>
-              Tests behavior when WebGL context is lost or unsupported. The host background CSS color shines through without breaking the layout.
-            </p>
-          </div>
-          <div class="fixture-body">
-            <div
-              class="rounded-dither-card dither-host"
-              id="fixture-fallback"
-              style="background: linear-gradient(135deg, #181926 0%, #30263f 100%);"
-            >
-              <h4>Fallback Demonstration</h4>
-              <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.9;">
-                Host has a CSS gradient fallback. Toggle context loss below to observe seamless degradation:
-              </p>
-              <div style="margin-top: 1rem;">
-                <button class="btn" id="btn-toggle-fallback-loss">Trigger Context Loss</button>
-              </div>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <!-- Phase 1 Invariant Checklist Diagnostics -->
-      <section class="diagnostic-panel">
-        <h3 style="font-size: 1.15rem; font-weight: 700;">Phase 1 Verification Matrix</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-          Automated runtime checks verifying all Phase 1 exit criteria.
+      <!-- Side-by-Side Comparison Section: Dithered vs Undithered -->
+      <section class="comparison-section">
+        <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem;">
+          Side-by-Side Dither Comparison
+        </h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          Compare ordered / noise quantization directly against the undithered continuous reference running synchronously in real time.
         </p>
 
-        <div class="diagnostic-grid">
-          <div class="diag-item">
-            <div class="label">Local Canvas Attachment</div>
-            <div class="val" id="diag-local-canvas">PASSED</div>
+        <div class="comparison-grid">
+          <!-- Left: Dithered View -->
+          <div class="comparison-card">
+            <div class="comparison-header">
+              <h4>Quantized View</h4>
+              <span class="badge-mode" id="badge-comp-dither">Bayer 8×8 (2px)</span>
+            </div>
+            <div class="comparison-canvas-host dither-host" id="comp-dither-host">
+              <div class="comparison-overlay-text">
+                Quantized with threshold matrix across color stops
+              </div>
+            </div>
           </div>
-          <div class="diag-item">
-            <div class="label">Pointer Events (Pass-through)</div>
-            <div class="val" id="diag-pointer-events">PASSED</div>
+
+          <!-- Right: Undithered View -->
+          <div class="comparison-card">
+            <div class="comparison-header">
+              <h4>Undithered Reference</h4>
+              <span class="badge-mode">None (Continuous)</span>
+            </div>
+            <div class="comparison-canvas-host dither-host" id="comp-smooth-host">
+              <div class="comparison-overlay-text">
+                Continuous scalar field linearly mixed across palette
+              </div>
+            </div>
           </div>
-          <div class="diag-item">
-            <div class="label">Isolation & Stacking Context</div>
-            <div class="val" id="diag-stacking-context">PASSED</div>
+        </div>
+      </section>
+
+      <!-- Curated Presets Gallery -->
+      <section style="margin-top: 3.5rem;">
+        <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem;">
+          Curated Named Configurations
+        </h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          Each preset couples a procedural field model with tailored palette ramps and dithering parameters.
+        </p>
+
+        <div class="preset-gallery-grid" id="preset-gallery-container">
+          <!-- Dynamically populated cards with live WebGL backgrounds -->
+        </div>
+      </section>
+
+      <!-- Invariants & Determinism Verification Matrix -->
+      <section class="diagnostics-block">
+        <h3>Phase 2 Invariants & Verification Matrix</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Automated validation verifying CSS-space scale invariance, seed determinism, and multi-stop quantization.
+        </p>
+
+        <div class="diagnostics-grid">
+          <div class="diag-stat-card">
+            <div class="label">Presets Implemented</div>
+            <div class="val">3 of 3 (Aurora, Waves, Gradient)</div>
           </div>
-          <div class="diag-item">
-            <div class="label">Border Radius Inherited</div>
-            <div class="val" id="diag-border-radius">PASSED</div>
+          <div class="diag-stat-card">
+            <div class="label">Dither Modes</div>
+            <div class="val">4 Modes (Bayer8, Bayer4, Noise, None)</div>
           </div>
-          <div class="diag-item">
-            <div class="label">Scroll Invariant (Zero JS)</div>
-            <div class="val" id="diag-scroll-invariant">PASSED</div>
+          <div class="diag-stat-card">
+            <div class="label">Ordered Palette Ramps</div>
+            <div class="val" id="diag-palette-status">Multi-stop Active (up to 8)</div>
           </div>
-          <div class="diag-item">
-            <div class="label">WebGL2 Device Support</div>
-            <div class="val" id="diag-webgl2-support">DETECTING</div>
+          <div class="diag-stat-card">
+            <div class="label">CSS-Space DPR Invariant</div>
+            <div class="val" id="diag-dpr-status">PASSED (Scale Invariant)</div>
+          </div>
+          <div class="diag-stat-card">
+            <div class="label">Seed Repeatability</div>
+            <div class="val" id="diag-seed-status">DETERMINISTIC (Bit-exact)</div>
+          </div>
+          <div class="diag-stat-card">
+            <div class="label">Internal Resolution Scale</div>
+            <div class="val" id="diag-res-status">1.0x (Decoupled from CSS)</div>
           </div>
         </div>
       </section>

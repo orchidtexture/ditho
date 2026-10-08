@@ -1,7 +1,8 @@
 export interface HostMountResult {
   canvas: HTMLCanvasElement;
   cleanup: () => void;
-  getDimensions: () => { width: number; height: number; dpr: number };
+  getDimensions: () => { width: number; height: number; dpr: number; resolutionScale: number };
+  setResolutionScale: (scale: number) => void;
 }
 
 /**
@@ -11,11 +12,12 @@ export interface HostMountResult {
  * - Host must establish positioning and an isolated stacking context (position: relative, isolation: isolate).
  * - Canvas is positioned absolutely (inset: 0, 100% size), receives z-index: -1, pointer-events: none.
  * - Canvas inherits border-radius from host.
- * - Canvas is decorative (aria-hidden="true").
+ * - Canvas is decorative (aria-hidden="true", role="presentation").
  */
 export function setupHostCanvas(
   host: HTMLElement,
   maxDpr: number = 2.0,
+  initialResolutionScale: number = 1.0,
   onResize?: (width: number, height: number, dpr: number) => void
 ): HostMountResult {
   // Ensure host class is present
@@ -52,13 +54,14 @@ export function setupHostCanvas(
   let currentWidth = 0;
   let currentHeight = 0;
   let currentDpr = 1;
+  let currentResolutionScale = initialResolutionScale;
 
   const updateSize = () => {
     const rect = host.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
 
-    const physicalWidth = Math.max(1, Math.round(rect.width * dpr));
-    const physicalHeight = Math.max(1, Math.round(rect.height * dpr));
+    const physicalWidth = Math.max(1, Math.round(rect.width * dpr * currentResolutionScale));
+    const physicalHeight = Math.max(1, Math.round(rect.height * dpr * currentResolutionScale));
 
     currentWidth = physicalWidth;
     currentHeight = physicalHeight;
@@ -99,6 +102,15 @@ export function setupHostCanvas(
   return {
     canvas,
     cleanup,
-    getDimensions: () => ({ width: currentWidth, height: currentHeight, dpr: currentDpr }),
+    getDimensions: () => ({
+      width: currentWidth,
+      height: currentHeight,
+      dpr: currentDpr,
+      resolutionScale: currentResolutionScale,
+    }),
+    setResolutionScale: (newResScale: number) => {
+      currentResolutionScale = Math.max(0.1, Math.min(1.0, newResScale));
+      updateSize();
+    },
   };
 }

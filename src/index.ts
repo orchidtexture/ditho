@@ -3,18 +3,22 @@ import { WebGL2Renderer } from './renderer/webgl2';
 import { setupHostCanvas } from './dom/host';
 
 export * from './core/types';
+export * from './presets';
 export { WebGL2Renderer } from './renderer/webgl2';
 export { setupHostCanvas } from './dom/host';
-export { parseColor } from './renderer/color';
+export { parseColor, normalizePalette } from './renderer/color';
 
 const DEFAULT_OPTIONS: Required<Omit<DitherOptions, 'paused'>> & { paused: boolean } = {
-  colorA: '#101124',
-  colorB: '#efb7d2',
-  speed: 0.35,
-  scale: 1.0,
-  pixelSize: 2.0,
+  preset: 'aurora',
+  colors: ['#101124', '#6155ba', '#efb7d2'],
   dither: 'bayer8',
+  pixelSize: 2.0,
+  scale: 1.0,
+  intensity: 1.0,
+  speed: 0.25,
+  seed: 42,
   maxDpr: 2.0,
+  resolutionScale: 1.0,
   paused: false,
 };
 
@@ -25,25 +29,37 @@ export function createDither(
   let opts = { ...DEFAULT_OPTIONS, ...options };
 
   // Setup host and canvas
-  const hostMount = setupHostCanvas(element, opts.maxDpr, (_w, _h, dpr) => {
-    // Re-render immediately on resize if paused
-    if (paused) {
-      renderer.render(effectiveTime, dpr);
+  const hostMount = setupHostCanvas(
+    element,
+    opts.maxDpr,
+    opts.resolutionScale,
+    (_w, _h, dpr) => {
+      // Re-render immediately on resize if paused
+      if (paused) {
+        renderer.render(effectiveTime, dpr);
+      }
     }
-  });
+  );
 
-  const renderer = new WebGL2Renderer(hostMount.canvas, {
-    colorA: opts.colorA,
-    colorB: opts.colorB,
-    speed: opts.speed,
-    scale: opts.scale,
-    pixelSize: opts.pixelSize,
-    dither: opts.dither,
-  }, () => {
-    // When context is restored, draw immediate frame
-    const dims = hostMount.getDimensions();
-    renderer.render(effectiveTime, dims.dpr);
-  });
+  const renderer = new WebGL2Renderer(
+    hostMount.canvas,
+    {
+      preset: opts.preset,
+      colors: opts.colors,
+      dither: opts.dither,
+      pixelSize: opts.pixelSize,
+      scale: opts.scale,
+      intensity: opts.intensity,
+      speed: opts.speed,
+      seed: opts.seed,
+      resolutionScale: opts.resolutionScale,
+    },
+    () => {
+      // When context is restored, draw immediate frame
+      const dims = hostMount.getDimensions();
+      renderer.render(effectiveTime, dims.dpr);
+    }
+  );
 
   let paused = opts.paused;
   let rafId: number | null = null;
@@ -87,13 +103,20 @@ export function createDither(
 
       opts = { ...opts, ...newOptions };
 
+      if (newOptions.resolutionScale !== undefined) {
+        hostMount.setResolutionScale(newOptions.resolutionScale);
+      }
+
       renderer.updateConfig({
-        ...(newOptions.colorA !== undefined && { colorA: newOptions.colorA }),
-        ...(newOptions.colorB !== undefined && { colorB: newOptions.colorB }),
-        ...(newOptions.speed !== undefined && { speed: newOptions.speed }),
-        ...(newOptions.scale !== undefined && { scale: newOptions.scale }),
-        ...(newOptions.pixelSize !== undefined && { pixelSize: newOptions.pixelSize }),
+        ...(newOptions.preset !== undefined && { preset: newOptions.preset }),
+        ...(newOptions.colors !== undefined && { colors: newOptions.colors }),
         ...(newOptions.dither !== undefined && { dither: newOptions.dither }),
+        ...(newOptions.pixelSize !== undefined && { pixelSize: newOptions.pixelSize }),
+        ...(newOptions.scale !== undefined && { scale: newOptions.scale }),
+        ...(newOptions.intensity !== undefined && { intensity: newOptions.intensity }),
+        ...(newOptions.speed !== undefined && { speed: newOptions.speed }),
+        ...(newOptions.seed !== undefined && { seed: newOptions.seed }),
+        ...(newOptions.resolutionScale !== undefined && { resolutionScale: newOptions.resolutionScale }),
       });
 
       if (newOptions.paused !== undefined) {

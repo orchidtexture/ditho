@@ -1,249 +1,369 @@
-import { createDither, DitherMode } from './index';
+import { createDither, DitherMode, PresetType, DitherOptions } from './index';
+import { PRESETS } from './presets';
 
-// Initialize Hero Dither
-const heroElement = document.getElementById('hero-host') as HTMLElement;
-
-const heroDither = createDither(heroElement, {
-  colorA: '#101124',
-  colorB: '#efb7d2',
-  speed: 0.35,
-  scale: 1.0,
-  pixelSize: 2.0,
+// State for active hero configuration
+let currentOptions: Required<DitherOptions> = {
+  preset: 'aurora',
+  colors: ['#050814', '#16235a', '#2f6991', '#88d49e', '#fef9e7'],
   dither: 'bayer8',
+  pixelSize: 2,
+  scale: 1.0,
+  intensity: 1.1,
+  speed: 0.22,
+  seed: 42,
+  maxDpr: 2.0,
+  resolutionScale: 1.0,
+  paused: false,
+};
+
+// 1. Initialize Hero Stage
+const heroElement = document.getElementById('hero-stage') as HTMLElement;
+const heroDither = createDither(heroElement, currentOptions);
+
+// 2. Initialize Side-by-Side Comparison Instances
+const compDitherElement = document.getElementById('comp-dither-host') as HTMLElement;
+const compSmoothElement = document.getElementById('comp-smooth-host') as HTMLElement;
+
+const compDitherInstance = createDither(compDitherElement, {
+  ...currentOptions,
 });
 
-// Hero Controls Wiring
-const colorAInput = document.getElementById('colorA') as HTMLInputElement;
-const colorBInput = document.getElementById('colorB') as HTMLInputElement;
-const ditherModeSelect = document.getElementById('ditherMode') as HTMLSelectElement;
-const pixelSizeInput = document.getElementById('pixelSize') as HTMLInputElement;
-const valPixelSize = document.getElementById('val-pixelSize') as HTMLElement;
-const speedInput = document.getElementById('speed') as HTMLInputElement;
-const valSpeed = document.getElementById('val-speed') as HTMLElement;
-const scaleInput = document.getElementById('scale') as HTMLInputElement;
+const compSmoothInstance = createDither(compSmoothElement, {
+  ...currentOptions,
+  dither: 'none',
+});
+
+// DOM Control Elements
+const selectPreset = document.getElementById('select-preset') as HTMLSelectElement;
+const selectDither = document.getElementById('select-dither') as HTMLSelectElement;
+const rangePixelSize = document.getElementById('range-pixelsize') as HTMLInputElement;
+const valPixelSize = document.getElementById('val-pixelsize') as HTMLElement;
+const rangeScale = document.getElementById('range-scale') as HTMLInputElement;
 const valScale = document.getElementById('val-scale') as HTMLElement;
+const rangeIntensity = document.getElementById('range-intensity') as HTMLInputElement;
+const valIntensity = document.getElementById('val-intensity') as HTMLElement;
+const rangeSpeed = document.getElementById('range-speed') as HTMLInputElement;
+const valSpeed = document.getElementById('val-speed') as HTMLElement;
+const inputSeed = document.getElementById('input-seed') as HTMLInputElement;
+const btnRandSeed = document.getElementById('btn-rand-seed') as HTMLButtonElement;
+const selectResScale = document.getElementById('select-res-scale') as HTMLSelectElement;
 const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
+const btnResetTime = document.getElementById('btn-reset-time') as HTMLButtonElement;
 const btnContextLoss = document.getElementById('btn-context-loss') as HTMLButtonElement;
 
-colorAInput?.addEventListener('input', (e) => {
-  heroDither.update({ colorA: (e.target as HTMLInputElement).value });
+// Metric labels
+const metricMode = document.getElementById('metric-mode') as HTMLElement;
+const metricPixel = document.getElementById('metric-pixel') as HTMLElement;
+const metricSeed = document.getElementById('metric-seed') as HTMLElement;
+const metricScale = document.getElementById('metric-scale') as HTMLElement;
+const heroTag = document.getElementById('hero-tag') as HTMLElement;
+const heroTitle = document.getElementById('hero-title') as HTMLElement;
+const heroDesc = document.getElementById('hero-desc') as HTMLElement;
+const badgeCompDither = document.getElementById('badge-comp-dither') as HTMLElement;
+const paletteCountEl = document.getElementById('palette-count') as HTMLElement;
+const paletteSwatchesContainer = document.getElementById('palette-swatches-container') as HTMLElement;
+const btnAddColor = document.getElementById('btn-add-color') as HTMLButtonElement;
+
+function syncMetricsDisplay(): void {
+  metricMode.textContent =
+    currentOptions.dither === 'none'
+      ? 'None (Continuous)'
+      : currentOptions.dither === 'noise'
+      ? 'Static Noise'
+      : currentOptions.dither === 'bayer4'
+      ? 'Bayer 4×4'
+      : 'Bayer 8×8';
+
+  metricPixel.textContent = `${currentOptions.pixelSize}px`;
+  metricSeed.textContent = `${currentOptions.seed}`;
+  metricScale.textContent = currentOptions.scale.toFixed(1);
+
+  badgeCompDither.textContent = `${
+    currentOptions.dither === 'none'
+      ? 'None'
+      : currentOptions.dither === 'noise'
+      ? 'Static Noise'
+      : currentOptions.dither.toUpperCase()
+  } (${currentOptions.pixelSize}px)`;
+
+  valPixelSize.textContent = `${currentOptions.pixelSize}px`;
+  valScale.textContent = currentOptions.scale.toFixed(1);
+  valIntensity.textContent = currentOptions.intensity.toFixed(2);
+  valSpeed.textContent = currentOptions.speed.toFixed(2);
+}
+
+function updateAllInstances(partial: Partial<DitherOptions>): void {
+  currentOptions = { ...currentOptions, ...partial };
+
+  heroDither.update(partial);
+
+  compDitherInstance.update(partial);
+
+  // Smooth comparison stays dither: 'none'
+  compSmoothInstance.update({
+    ...partial,
+    dither: 'none',
+  });
+
+  syncMetricsDisplay();
+}
+
+// Render dynamic color palette editor
+function renderPaletteEditor(): void {
+  paletteSwatchesContainer.innerHTML = '';
+  paletteCountEl.textContent = `${currentOptions.colors.length}`;
+
+  currentOptions.colors.forEach((color, idx) => {
+    const item = document.createElement('div');
+    item.className = 'color-stop-item';
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = color.length === 7 ? color : '#ffffff';
+    colorInput.addEventListener('input', (e) => {
+      const newHex = (e.target as HTMLInputElement).value;
+      const updated = [...currentOptions.colors];
+      updated[idx] = newHex;
+      hexLabel.textContent = newHex;
+      updateAllInstances({ colors: updated });
+    });
+
+    const hexLabel = document.createElement('span');
+    hexLabel.textContent = color;
+
+    item.appendChild(colorInput);
+    item.appendChild(hexLabel);
+
+    if (currentOptions.colors.length > 2) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn-icon-danger';
+      deleteBtn.textContent = '×';
+      deleteBtn.title = 'Remove color stop';
+      deleteBtn.addEventListener('click', () => {
+        const updated = currentOptions.colors.filter((_, i) => i !== idx);
+        updateAllInstances({ colors: updated });
+        renderPaletteEditor();
+      });
+      item.appendChild(deleteBtn);
+    }
+
+    paletteSwatchesContainer.appendChild(item);
+  });
+
+  btnAddColor.disabled = currentOptions.colors.length >= 8;
+}
+
+// Add color stop handler
+btnAddColor.addEventListener('click', () => {
+  if (currentOptions.colors.length >= 8) return;
+  // Blend between last two colors
+  const lastColor = currentOptions.colors[currentOptions.colors.length - 1];
+  const newColor = lastColor === '#ffffff' ? '#e26d5c' : '#ffffff';
+  const updated = [...currentOptions.colors, newColor];
+  updateAllInstances({ colors: updated });
+  renderPaletteEditor();
 });
 
-colorBInput?.addEventListener('input', (e) => {
-  heroDither.update({ colorB: (e.target as HTMLInputElement).value });
+// Event Listeners for Controls
+selectPreset.addEventListener('change', (e) => {
+  const preset = (e.target as HTMLSelectElement).value as PresetType;
+  updateAllInstances({ preset });
+  heroTag.textContent = `${preset.toUpperCase()} Preset`;
 });
 
-ditherModeSelect?.addEventListener('change', (e) => {
-  heroDither.update({ dither: (e.target as HTMLSelectElement).value as DitherMode });
+selectDither.addEventListener('change', (e) => {
+  const dither = (e.target as HTMLSelectElement).value as DitherMode;
+  updateAllInstances({ dither });
 });
 
-pixelSizeInput?.addEventListener('input', (e) => {
-  const val = Number((e.target as HTMLInputElement).value);
-  valPixelSize.textContent = `${val}px`;
-  heroDither.update({ pixelSize: val });
+rangePixelSize.addEventListener('input', (e) => {
+  const pixelSize = Number((e.target as HTMLInputElement).value);
+  updateAllInstances({ pixelSize });
 });
 
-speedInput?.addEventListener('input', (e) => {
-  const val = Number((e.target as HTMLInputElement).value);
-  valSpeed.textContent = val.toFixed(2);
-  heroDither.update({ speed: val });
+rangeScale.addEventListener('input', (e) => {
+  const scale = Number((e.target as HTMLInputElement).value);
+  updateAllInstances({ scale });
 });
 
-scaleInput?.addEventListener('input', (e) => {
-  const val = Number((e.target as HTMLInputElement).value);
-  valScale.textContent = val.toFixed(1);
-  heroDither.update({ scale: val });
+rangeIntensity.addEventListener('input', (e) => {
+  const intensity = Number((e.target as HTMLInputElement).value);
+  updateAllInstances({ intensity });
 });
 
-btnPause?.addEventListener('click', () => {
+rangeSpeed.addEventListener('input', (e) => {
+  const speed = Number((e.target as HTMLInputElement).value);
+  updateAllInstances({ speed });
+});
+
+inputSeed.addEventListener('change', (e) => {
+  const seed = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+  updateAllInstances({ seed });
+});
+
+btnRandSeed.addEventListener('click', () => {
+  const seed = Math.floor(Math.random() * 100000);
+  inputSeed.value = `${seed}`;
+  updateAllInstances({ seed });
+});
+
+selectResScale.addEventListener('change', (e) => {
+  const resolutionScale = parseFloat((e.target as HTMLSelectElement).value);
+  updateAllInstances({ resolutionScale });
+  const diagRes = document.getElementById('diag-res-status');
+  if (diagRes) {
+    diagRes.textContent = `${resolutionScale}x (Decoupled from CSS)`;
+  }
+});
+
+btnPause.addEventListener('click', () => {
   if (heroDither.isPaused()) {
     heroDither.resume();
+    compDitherInstance.resume();
+    compSmoothInstance.resume();
     btnPause.textContent = 'Pause';
     btnPause.classList.remove('active');
   } else {
     heroDither.pause();
+    compDitherInstance.pause();
+    compSmoothInstance.pause();
     btnPause.textContent = 'Resume';
     btnPause.classList.add('active');
   }
 });
 
-let isHeroContextLost = false;
-btnContextLoss?.addEventListener('click', () => {
-  if (!isHeroContextLost) {
+btnResetTime.addEventListener('click', () => {
+  // Deterministic pause check: update with speed 0 and pause
+  heroDither.pause();
+  compDitherInstance.pause();
+  compSmoothInstance.pause();
+  btnPause.textContent = 'Resume';
+  btnPause.classList.add('active');
+  updateAllInstances({ speed: 0 });
+});
+
+let isContextLost = false;
+btnContextLoss.addEventListener('click', () => {
+  if (!isContextLost) {
     heroDither.simulateContextLoss();
     btnContextLoss.textContent = 'Restore Context';
     btnContextLoss.classList.add('active');
-    isHeroContextLost = true;
+    isContextLost = true;
   } else {
     heroDither.restoreContext();
     btnContextLoss.textContent = 'Lose Context';
     btnContextLoss.classList.remove('active');
-    isHeroContextLost = false;
+    isContextLost = false;
   }
 });
 
-// Initialize Fixture 1: Opaque Ancestor & Rounded Card
-const card1Element = document.getElementById('fixture-card-1');
-if (card1Element) {
-  createDither(card1Element, {
-    colorA: '#151329',
-    colorB: '#6c5ce7',
-    speed: 0.2,
-    pixelSize: 2,
-    scale: 1.2,
+// Load Preset Function
+function loadPreset(presetKey: string): void {
+  const p = PRESETS[presetKey];
+  if (!p) return;
+
+  // Update UI Inputs
+  selectPreset.value = p.options.preset || 'aurora';
+  selectDither.value = p.options.dither || 'bayer8';
+  rangePixelSize.value = `${p.options.pixelSize ?? 2}`;
+  rangeScale.value = `${p.options.scale ?? 1.0}`;
+  rangeIntensity.value = `${p.options.intensity ?? 1.0}`;
+  rangeSpeed.value = `${p.options.speed ?? 0.25}`;
+  inputSeed.value = `${p.options.seed ?? 42}`;
+
+  heroTitle.textContent = p.name;
+  heroDesc.textContent = p.description;
+  heroTag.textContent = `${p.options.preset?.toUpperCase()} Preset`;
+
+  // Update Preset bar chip active class
+  document.querySelectorAll('.preset-chip').forEach((chip) => {
+    chip.classList.toggle('active', chip.getAttribute('data-preset-id') === presetKey);
   });
+
+  updateAllInstances(p.options);
+  renderPaletteEditor();
 }
 
-// Initialize Fixture 2: Nested Scroll Items
-const scroll1Element = document.getElementById('fixture-scroll-1');
-if (scroll1Element) {
-  createDither(scroll1Element, {
-    colorA: '#0d1b2a',
-    colorB: '#415a77',
-    speed: 0.4,
-    pixelSize: 3,
-    scale: 0.9,
+// Preset Quick Chips
+document.querySelectorAll('.preset-chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const key = chip.getAttribute('data-preset-id');
+    if (key) loadPreset(key);
   });
-}
-
-const scroll2Element = document.getElementById('fixture-scroll-2');
-if (scroll2Element) {
-  createDither(scroll2Element, {
-    colorA: '#1a1423',
-    colorB: '#b76935',
-    speed: 0.3,
-    pixelSize: 2,
-    scale: 1.1,
-  });
-}
-
-// Initialize Fixture 3: Transformed Container
-const transformElement = document.getElementById('fixture-transform');
-if (transformElement) {
-  createDither(transformElement, {
-    colorA: '#140152',
-    colorB: '#22007c',
-    speed: 0.25,
-    pixelSize: 2,
-    scale: 1.0,
-  });
-}
-
-// Initialize Fixture 4: Overlapping Layers
-const overlapElement = document.getElementById('fixture-overlap');
-if (overlapElement) {
-  createDither(overlapElement, {
-    colorA: '#03254c',
-    colorB: '#1167b1',
-    speed: 0.2,
-    pixelSize: 2,
-    scale: 1.3,
-  });
-}
-
-// Initialize Fixture 5: Click & Focus Interactivity
-const interactiveElement = document.getElementById('fixture-interactive');
-if (interactiveElement) {
-  createDither(interactiveElement, {
-    colorA: '#1c1917',
-    colorB: '#78716c',
-    speed: 0.15,
-    pixelSize: 2,
-    scale: 1.0,
-  });
-}
-
-const testClickBtn = document.getElementById('test-click-btn');
-const testClickDisplay = document.getElementById('test-click-display');
-let clickCount = 0;
-testClickBtn?.addEventListener('click', () => {
-  clickCount++;
-  if (testClickDisplay) {
-    testClickDisplay.textContent = `${clickCount} click${clickCount === 1 ? '' : 's'}`;
-  }
 });
 
-// Initialize Fixture 6: Fallback & Context Loss demo
-const fallbackElement = document.getElementById('fixture-fallback');
-let fallbackDither: ReturnType<typeof createDither> | null = null;
-if (fallbackElement) {
-  fallbackDither = createDither(fallbackElement, {
-    colorA: '#240046',
-    colorB: '#9d4edd',
-    speed: 0.3,
-    pixelSize: 2,
+// 3. Populate Curated Presets Gallery
+const galleryContainer = document.getElementById('preset-gallery-container');
+if (galleryContainer) {
+  Object.entries(PRESETS).forEach(([key, presetConfig]) => {
+    const card = document.createElement('div');
+    card.className = 'preset-card';
+
+    const host = document.createElement('div');
+    host.className = 'preset-card-host dither-host';
+
+    const body = document.createElement('div');
+    body.className = 'preset-card-body';
+
+    const title = document.createElement('h4');
+    title.className = 'preset-card-title';
+    title.textContent = presetConfig.name;
+
+    const desc = document.createElement('p');
+    desc.className = 'preset-card-desc';
+    desc.textContent = presetConfig.description;
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'preset-card-meta';
+
+    const info = document.createElement('span');
+    info.textContent = `${presetConfig.options.preset} • ${presetConfig.options.dither}`;
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'btn btn-secondary';
+    loadBtn.style.padding = '0.35rem 0.75rem';
+    loadBtn.style.fontSize = '0.75rem';
+    loadBtn.textContent = 'Load Configuration';
+    loadBtn.addEventListener('click', () => {
+      loadPreset(key);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    metaRow.appendChild(info);
+    metaRow.appendChild(loadBtn);
+
+    body.appendChild(title);
+    body.appendChild(desc);
+    body.appendChild(metaRow);
+
+    card.appendChild(host);
+    card.appendChild(body);
+    galleryContainer.appendChild(card);
+
+    // Initialize live background for each gallery card
+    createDither(host, {
+      ...presetConfig.options,
+      speed: (presetConfig.options.speed || 0.2) * 0.75, // slightly calmer in gallery
+    });
   });
 }
 
-const btnToggleFallbackLoss = document.getElementById('btn-toggle-fallback-loss');
-let isFallbackLost = false;
-btnToggleFallbackLoss?.addEventListener('click', () => {
-  if (!fallbackDither) return;
-  if (!isFallbackLost) {
-    fallbackDither.simulateContextLoss();
-    btnToggleFallbackLoss.textContent = 'Restore Context';
-    btnToggleFallbackLoss.classList.add('active');
-    isFallbackLost = true;
-  } else {
-    fallbackDither.restoreContext();
-    btnToggleFallbackLoss.textContent = 'Trigger Context Loss';
-    btnToggleFallbackLoss.classList.remove('active');
-    isFallbackLost = false;
-  }
-});
+// Initial renders
+renderPaletteEditor();
+syncMetricsDisplay();
 
-// Run Runtime Verification Diagnostics
-window.addEventListener('DOMContentLoaded', () => {
-  const statusEl = document.getElementById('webgl-status');
-  const testCanvas = document.createElement('canvas');
-  const hasWebGL2 = !!testCanvas.getContext('webgl2');
-
-  if (statusEl) {
-    statusEl.textContent = hasWebGL2 ? 'WebGL2 Supported (Hardware Active)' : 'WebGL2 Unavailable (Fallback Active)';
-    statusEl.style.color = hasWebGL2 ? '#4ade80' : '#f87171';
+// Diagnostics & Meta tracking
+function updateHeaderMeta(): void {
+  const dprEl = document.getElementById('meta-dpr');
+  if (dprEl) {
+    dprEl.innerHTML = `DPR: <strong>${window.devicePixelRatio.toFixed(1)}</strong>`;
   }
 
-  const diagWebgl = document.getElementById('diag-webgl2-support');
-  if (diagWebgl) {
-    diagWebgl.textContent = hasWebGL2 ? 'SUPPORTED' : 'UNSUPPORTED';
-    diagWebgl.className = hasWebGL2 ? 'val' : 'val error';
+  const viewportEl = document.getElementById('meta-viewport');
+  if (viewportEl) {
+    viewportEl.innerHTML = `Viewport: <strong>${window.innerWidth}×${window.innerHeight}</strong>`;
   }
+}
 
-  // Check canvas child positioning
-  const heroCanvas = heroElement.querySelector('canvas.dither-canvas') as HTMLCanvasElement;
-  const diagLocalCanvas = document.getElementById('diag-local-canvas');
-  if (heroCanvas && heroCanvas.parentElement === heroElement) {
-    diagLocalCanvas!.textContent = 'PASSED';
-  } else {
-    diagLocalCanvas!.textContent = 'FAILED';
-    diagLocalCanvas!.className = 'val error';
-  }
-
-  // Check pointer events
-  const diagPointer = document.getElementById('diag-pointer-events');
-  if (heroCanvas && window.getComputedStyle(heroCanvas).pointerEvents === 'none') {
-    diagPointer!.textContent = 'PASSED (none)';
-  } else {
-    diagPointer!.textContent = 'FAILED';
-    diagPointer!.className = 'val error';
-  }
-
-  // Check host isolation
-  const diagStacking = document.getElementById('diag-stacking-context');
-  const heroStyle = window.getComputedStyle(heroElement);
-  if (heroStyle.isolation === 'isolate' && heroStyle.position === 'relative') {
-    diagStacking!.textContent = 'PASSED (isolate)';
-  } else {
-    diagStacking!.textContent = 'FAILED';
-    diagStacking!.className = 'val warn';
-  }
-
-  // Check border radius inheritance
-  const diagRadius = document.getElementById('diag-border-radius');
-  if (heroCanvas && window.getComputedStyle(heroCanvas).borderRadius === heroStyle.borderRadius) {
-    diagRadius!.textContent = 'PASSED (inherited)';
-  } else {
-    // Some browsers report computed pixel values matching the host
-    diagRadius!.textContent = 'PASSED';
-  }
-});
+window.addEventListener('resize', updateHeaderMeta);
+updateHeaderMeta();
