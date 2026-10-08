@@ -17,6 +17,7 @@ export interface ScheduledTask {
 let nextTaskId = 1;
 const tasks = new Map<number, ScheduledTask>();
 const taskLastRenderTime = new Map<number, number>();
+const taskAccumulatedDelta = new Map<number, number>();
 let rafId: number | null = null;
 let lastTimestamp: number | null = null;
 let unsubscribeVisibility: (() => void) | null = null;
@@ -43,6 +44,13 @@ function tick(now: number): void {
     const continuous = task.isContinuous();
     const dirty = task.isDirty();
 
+    if (continuous) {
+      const prev = taskAccumulatedDelta.get(task.id) || 0;
+      taskAccumulatedDelta.set(task.id, prev + delta);
+    } else {
+      taskAccumulatedDelta.set(task.id, 0);
+    }
+
     if (continuous || dirty) {
       // Check optional FPS throttle
       const fpsLimit = task.getFpsLimit ? task.getFpsLimit() : null;
@@ -57,7 +65,9 @@ function tick(now: number): void {
       }
 
       if (shouldDraw) {
-        task.render(continuous ? delta : 0);
+        const elapsed = continuous ? (taskAccumulatedDelta.get(task.id) || delta) : 0;
+        task.render(elapsed);
+        taskAccumulatedDelta.set(task.id, 0);
         taskLastRenderTime.set(task.id, now);
       }
     }
@@ -121,6 +131,7 @@ export function registerScheduledTask(task: Omit<ScheduledTask, 'id'>): { id: nu
     unregister: () => {
       tasks.delete(id);
       taskLastRenderTime.delete(id);
+      taskAccumulatedDelta.delete(id);
       if (tasks.size === 0) {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);

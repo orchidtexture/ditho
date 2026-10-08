@@ -181,4 +181,31 @@ describe('Lifecycle & Resource Teardown (Phase 3 Exit Criteria)', () => {
 
     instance.destroy();
   });
+
+  it('activates CSS fallback when shader compilation or program linking fails', () => {
+    // Override getProgramParameter to simulate shader program linking failure
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type) => {
+      if (type === 'webgl2') {
+        const mockGl = (originalGetContext as any)('webgl2');
+        return {
+          ...mockGl,
+          getProgramParameter: () => false,
+        };
+      }
+      return null;
+    });
+
+    const el = document.createElement('div');
+    container.appendChild(el);
+
+    const instance = createDither(el);
+    // Must recognize failure and activate fallback
+    expect(instance.isFallbackActive()).toBe(true);
+    expect(instance.canvas).toBeNull();
+    // Budget slot must be released
+    expect(getActiveContextCount()).toBe(0);
+
+    instance.destroy();
+  });
 });

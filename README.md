@@ -16,7 +16,7 @@ Ditho mounts animated, procedural dithered backgrounds directly inside target DO
   - `waves`: Multi-layer directional harmonic sine wave interference.
   - `gradient`: Smooth angled directional gradient with subtle wave oscillation.
 - **Multi-Stop Color Ramps:** Quantizes ordered palettes of up to 8 colors smoothly across threshold intervals.
-- **Shared Animation Scheduler:** Single shared `requestAnimationFrame` loop drives all instances. Stops completely when elements are offscreen, paused, or static (0 idle CPU/GPU consumption).
+- **Shared Animation Scheduler:** Single shared `requestAnimationFrame` loop drives all instances. Stops continuous rendering when inactive (when elements are offscreen, the tab is hidden, or instances are paused/static).
 - **Explicit Quality Controls:** Configurable DPR capping (`maxDpr`), internal resolution scaling (`resolutionScale`), and optional frame rate capping (`fpsLimit: 30`).
 - **Context Budget Protection:** Configurable limit on concurrent WebGL contexts (`setContextBudget`); graceful fallback to CSS backgrounds if exhausted.
 - **Accessibility & Reduced Motion:** Canvases are marked decorative (`aria-hidden="true"`, `role="presentation"`). Automatically detects OS motion preference (`prefers-reduced-motion: reduce`) or enforces static rendering.
@@ -204,8 +204,8 @@ import { PRESETS } from 'ditho';
 1. **Intended Workload:** Ditho is designed for one to a few prominent hero sections, panels, or cards on a page. Avoid mounting dozens of independent WebGL canvases simultaneously.
 2. **Context Budget:** Browsers enforce hard limits on concurrent WebGL contexts (often 8 to 16). Configure the budget using `setContextBudget(limit)`. If exhausted, newly mounted targets remain on their CSS fallback background without crashing.
 3. **High-DPI / Mobile Displays:** Use `maxDpr: 1.5` or `2.0`. A 4K or 3× retina mobile display at uncapped DPR consumes massive fillrate.
-4. **Constrained Devices:** Set `fpsLimit: 30` or `resolutionScale: 0.75` for a 40–50% reduction in GPU draw cost with virtually zero artistic degradation.
-5. **Zero Idle Overhead:** The shared scheduler automatically suspends the `requestAnimationFrame` loop when all instances are offscreen, the tab is hidden, or instances are paused/static.
+4. **Constrained Devices:** Offers configurable quality/performance tradeoffs: set `fpsLimit: 30` or `resolutionScale: 0.75` to reduce GPU draw overhead on battery-sensitive or constrained devices.
+5. **Idle Suspension:** The shared scheduler automatically suspends the `requestAnimationFrame` loop when all instances are offscreen, the tab is hidden, or instances are paused/static.
 
 ---
 

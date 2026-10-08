@@ -167,6 +167,10 @@ export function createDither(
         hostMount.setResolutionScale(opts.resolutionScale);
       }
 
+      if (newOptions.maxDpr !== undefined) {
+        hostMount.setMaxDpr(opts.maxDpr);
+      }
+
       renderer.updateConfig({
         preset: opts.preset,
         colors: opts.colors,

@@ -38,6 +38,7 @@ export class WebGL2Renderer {
   private uBorderRadiusLoc: WebGLUniformLocation | null = null;
 
   // State
+  private isInitialized = false;
   private isContextLost = false;
   private loseContextExt: any = null;
   private timerQueryExt: any = null;
@@ -116,11 +117,21 @@ export class WebGL2Renderer {
     // Compile shaders
     const vs = this.compileShader(gl.VERTEX_SHADER, vertexShaderSource);
     const fs = this.compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-    if (!vs || !fs) return false;
+    if (!vs || !fs) {
+      if (vs) gl.deleteShader(vs);
+      if (fs) gl.deleteShader(fs);
+      this.isInitialized = false;
+      return false;
+    }
 
     // Link program
     const program = gl.createProgram();
-    if (!program) return false;
+    if (!program) {
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      this.isInitialized = false;
+      return false;
+    }
 
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
@@ -131,6 +142,7 @@ export class WebGL2Renderer {
       gl.deleteShader(vs);
       gl.deleteShader(fs);
       gl.deleteProgram(program);
+      this.isInitialized = false;
       return false;
     }
 
@@ -180,6 +192,7 @@ export class WebGL2Renderer {
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+    this.isInitialized = true;
     return true;
   }
 
@@ -289,8 +302,11 @@ export class WebGL2Renderer {
 
     if (this.lastFrameTimestamp > 0 && t0 > this.lastFrameTimestamp) {
       const instantaneousFps = 1000 / (t0 - this.lastFrameTimestamp);
-      // Exponential moving average over ~30 frames
-      this.fpsSmoothed = this.fpsSmoothed * 0.92 + Math.min(120, instantaneousFps) * 0.08;
+      if (this.frameCount <= 1) {
+        this.fpsSmoothed = instantaneousFps;
+      } else {
+        this.fpsSmoothed = this.fpsSmoothed * 0.85 + Math.min(120, instantaneousFps) * 0.15;
+      }
     }
     this.lastFrameTimestamp = t0;
     this.frameCount++;
@@ -326,6 +342,7 @@ export class WebGL2Renderer {
   }
 
   public dispose(): void {
+    this.isInitialized = false;
     this.canvas.removeEventListener('webglcontextlost', this.handleContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.handleContextRestored);
 
@@ -355,6 +372,12 @@ export class WebGL2Renderer {
   }
 
   public isAvailable(): boolean {
-    return this.gl !== null && !this.isContextLost;
+    return (
+      this.isInitialized &&
+      !this.isContextLost &&
+      this.gl !== null &&
+      this.program !== null &&
+      this.vao !== null
+    );
   }
 }

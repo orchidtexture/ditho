@@ -5,6 +5,7 @@ export interface HostMountResult {
   getBorderRadius: () => [number, number, number, number];
   hasValidDimensions: () => boolean;
   setResolutionScale: (scale: number) => void;
+  setMaxDpr: (maxDpr: number) => void;
   markNeedsMeasure: () => void;
   measureIfNeeded: () => boolean;
 }
@@ -71,6 +72,7 @@ export function setupHostCanvas(
   let currentPhysicalHeight = 1;
   let currentDpr = 1;
   let currentResolutionScale = initialResolutionScale;
+  let currentMaxDpr = maxDpr;
   let currentBorderRadius: [number, number, number, number] = [0, 0, 0, 0];
   let isDimensionValid = false;
   let needsMeasurement = true;
@@ -87,7 +89,7 @@ export function setupHostCanvas(
     }
 
     isDimensionValid = true;
-    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    const dpr = Math.min(window.devicePixelRatio || 1, currentMaxDpr);
     const pWidth = Math.max(1, Math.round(rect.width * dpr * currentResolutionScale));
     const pHeight = Math.max(1, Math.round(rect.height * dpr * currentResolutionScale));
 
@@ -149,6 +151,11 @@ export function setupHostCanvas(
     hasValidDimensions: () => isDimensionValid,
     setResolutionScale: (newScale: number) => {
       currentResolutionScale = Math.max(0.1, Math.min(1.0, newScale));
+      needsMeasurement = true;
+      measureAndApply();
+    },
+    setMaxDpr: (newMaxDpr: number) => {
+      currentMaxDpr = Math.max(0.5, Math.min(4.0, newMaxDpr));
       needsMeasurement = true;
       measureAndApply();
     },
