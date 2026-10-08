@@ -2,7 +2,10 @@ export interface HostMountResult {
   canvas: HTMLCanvasElement;
   cleanup: () => void;
   getDimensions: () => { width: number; height: number; dpr: number; resolutionScale: number };
+  hasValidDimensions: () => boolean;
   setResolutionScale: (scale: number) => void;
+  markNeedsMeasure: () => void;
+  measureIfNeeded: () => boolean;
 }
 
 /**
@@ -18,7 +21,7 @@ export function setupHostCanvas(
   host: HTMLElement,
   maxDpr: number = 2.0,
   initialResolutionScale: number = 1.0,
-  onResize?: (width: number, height: number, dpr: number) => void
+  onDimensionChange?: (width: number, height: number, dpr: number) => void
 ): HostMountResult {
   // Ensure host class is present
   host.classList.add('dither-host');
@@ -38,7 +41,7 @@ export function setupHostCanvas(
   canvas.setAttribute('aria-hidden', 'true');
   canvas.setAttribute('role', 'presentation');
 
-  // Inline fallback styling in case CSS class is loaded asynchronously
+  // Inline styling guarantees proper layering even before external CSS loads
   canvas.style.position = 'absolute';
   canvas.style.inset = '0';
   canvas.style.width = '100%';
@@ -51,43 +54,62 @@ export function setupHostCanvas(
   // Insert canvas as first child so it sits behind DOM content
   host.insertBefore(canvas, host.firstChild);
 
-  let currentWidth = 0;
-  let currentHeight = 0;
+  let currentPhysicalWidth = 1;
+  let currentPhysicalHeight = 1;
   let currentDpr = 1;
   let currentResolutionScale = initialResolutionScale;
+  let isDimensionValid = false;
+  let needsMeasurement = true;
 
-  const updateSize = () => {
+  const measureAndApply = (): boolean => {
+    needsMeasurement = false;
     const rect = host.getBoundingClientRect();
+
+    // Check for zero-size targets (hidden, detached, or collapsed)
+    if (rect.width <= 0 || rect.height <= 0) {
+      isDimensionValid = false;
+      return false;
+    }
+
+    isDimensionValid = true;
     const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    const pWidth = Math.max(1, Math.round(rect.width * dpr * currentResolutionScale));
+    const pHeight = Math.max(1, Math.round(rect.height * dpr * currentResolutionScale));
 
-    const physicalWidth = Math.max(1, Math.round(rect.width * dpr * currentResolutionScale));
-    const physicalHeight = Math.max(1, Math.round(rect.height * dpr * currentResolutionScale));
+    const changed =
+      canvas.width !== pWidth ||
+      canvas.height !== pHeight ||
+      currentDpr !== dpr;
 
-    currentWidth = physicalWidth;
-    currentHeight = physicalHeight;
-    currentDpr = dpr;
+    if (changed) {
+      canvas.width = pWidth;
+      canvas.height = pHeight;
+      currentPhysicalWidth = pWidth;
+      currentPhysicalHeight = pHeight;
+      currentDpr = dpr;
 
-    if (canvas.width !== physicalWidth || canvas.height !== physicalHeight) {
-      canvas.width = physicalWidth;
-      canvas.height = physicalHeight;
-      if (onResize) {
-        onResize(physicalWidth, physicalHeight, dpr);
+      if (onDimensionChange) {
+        onDimensionChange(pWidth, pHeight, dpr);
       }
     }
+
+    return changed;
   };
 
   // Initial measurement
-  updateSize();
+  measureAndApply();
 
-  // ResizeObserver for responsive dimension tracking
+  // ResizeObserver for element box changes
   const resizeObserver = new ResizeObserver(() => {
-    updateSize();
+    needsMeasurement = true;
+    measureAndApply();
   });
   resizeObserver.observe(host);
 
-  // Window dpr changes (e.g. moving between retina and external screens)
+  // Window resize/DPR listener
   const handleWindowResize = () => {
-    updateSize();
+    needsMeasurement = true;
+    measureAndApply();
   };
   window.addEventListener('resize', handleWindowResize, { passive: true });
 
@@ -103,14 +125,25 @@ export function setupHostCanvas(
     canvas,
     cleanup,
     getDimensions: () => ({
-      width: currentWidth,
-      height: currentHeight,
+      width: currentPhysicalWidth,
+      height: currentPhysicalHeight,
       dpr: currentDpr,
       resolutionScale: currentResolutionScale,
     }),
-    setResolutionScale: (newResScale: number) => {
-      currentResolutionScale = Math.max(0.1, Math.min(1.0, newResScale));
-      updateSize();
+    hasValidDimensions: () => isDimensionValid,
+    setResolutionScale: (newScale: number) => {
+      currentResolutionScale = Math.max(0.1, Math.min(1.0, newScale));
+      needsMeasurement = true;
+      measureAndApply();
+    },
+    markNeedsMeasure: () => {
+      needsMeasurement = true;
+    },
+    measureIfNeeded: () => {
+      if (needsMeasurement) {
+        return measureAndApply();
+      }
+      return false;
     },
   };
 }

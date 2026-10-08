@@ -1,5 +1,6 @@
 export type DitherMode = 'bayer8' | 'bayer4' | 'noise' | 'none';
-export type PresetType = 'gradient' | 'waves' | 'aurora';
+export type PresetType = 'aurora' | 'waves' | 'gradient';
+export type ReducedMotionPolicy = 'system' | 'static' | 'reduce' | 'off';
 
 export interface DitherOptions {
   /** Procedural field algorithm */
@@ -8,11 +9,11 @@ export interface DitherOptions {
   colors?: string[];
   /** Dithering algorithm */
   dither?: DitherMode;
-  /** Dither cell size in CSS pixels */
+  /** Dither cell size in CSS pixels (min: 1) */
   pixelSize?: number;
   /** Procedural structure spatial scale */
   scale?: number;
-  /** Contrast / field modulation intensity (0.0 to 2.0, default 1.0) */
+  /** Contrast / field modulation intensity */
   intensity?: number;
   /** Animation speed multiplier (0 = static) */
   speed?: number;
@@ -20,20 +21,35 @@ export interface DitherOptions {
   seed?: number;
   /** Cap device pixel ratio to protect GPU fillrate (default 2.0) */
   maxDpr?: number;
-  /** Internal rendering resolution scale (0.25 to 1.0, default 1.0) */
+  /** Internal rendering resolution scale (0.1 to 1.0, default 1.0) */
   resolutionScale?: number;
+  /** Reduced motion policy ('system' follows OS preference, 'static' freezes animation, 'off' ignores OS) */
+  reducedMotion?: ReducedMotionPolicy;
   /** Pause animation */
   paused?: boolean;
 }
 
+export type ValidatedDitherOptions = Required<DitherOptions>;
+
 export interface DitherInstance {
+  /** Target DOM element */
   readonly element: HTMLElement;
-  readonly canvas: HTMLCanvasElement;
+  /** Internal canvas element (null if WebGL unsupported or context budget exceeded) */
+  readonly canvas: HTMLCanvasElement | null;
+  /** Update options with automatic dirty-redraw */
   update(options: Partial<DitherOptions>): void;
+  /** Freeze animation without releasing GPU resources */
   pause(): void;
+  /** Resume animation */
   resume(): void;
+  /** Remove all DOM elements, event listeners, observers, and GPU resources */
   destroy(): void;
+  /** Check if instance is paused */
   isPaused(): boolean;
+  /** Check if instance is currently falling back to CSS (unsupported or budget exhausted) */
+  isFallbackActive(): boolean;
+  /** Testing utility: simulate WebGL context loss */
   simulateContextLoss(): void;
+  /** Testing utility: restore WebGL context */
   restoreContext(): void;
 }

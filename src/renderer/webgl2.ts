@@ -44,7 +44,8 @@ export class WebGL2Renderer {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     initialConfig: RendererConfig,
-    private readonly onContextRestored?: () => void
+    private readonly onContextRestored?: () => void,
+    private readonly onContextLostCallback?: () => void
   ) {
     this.config = { ...initialConfig };
     this.normalizedPalette = normalizePalette(this.config.colors);
@@ -61,12 +62,17 @@ export class WebGL2Renderer {
   private handleContextLost(e: Event): void {
     e.preventDefault();
     this.isContextLost = true;
+    this.canvas.style.display = 'none'; // Reveal host CSS fallback
     console.warn('[Ditho] WebGL2 context lost.');
+    if (this.onContextLostCallback) {
+      this.onContextLostCallback();
+    }
   }
 
   private handleContextRestored(): void {
     console.info('[Ditho] WebGL2 context restored. Rebuilding GPU resources...');
     this.isContextLost = false;
+    this.canvas.style.display = 'block';
     this.initGL();
     if (this.onContextRestored) {
       this.onContextRestored();

@@ -1,54 +1,58 @@
-import { DitherOptions, DitherInstance } from './core/types';
+import { DitherOptions, DitherInstance, ValidatedDitherOptions } from './core/types';
+import { validateOptions, DEFAULT_OPTIONS } from './core/options';
+import { acquireContextBudget, releaseContextBudget } from './core/budget';
 import { WebGL2Renderer } from './renderer/webgl2';
 import { setupHostCanvas } from './dom/host';
+import { observeIntersection } from './dom/visibility';
+import { isReducedMotionPreferred, subscribeToMotionPreference } from './dom/motion';
+import { registerScheduledTask, requestTick } from './scheduler/scheduler';
 
 export * from './core/types';
 export * from './presets';
+export { setContextBudget, getContextBudget, getActiveContextCount, resetContextBudget } from './core/budget';
+export { isSchedulerActive, getRegisteredTaskCount } from './scheduler/scheduler';
 export { WebGL2Renderer } from './renderer/webgl2';
 export { setupHostCanvas } from './dom/host';
 export { parseColor, normalizePalette } from './renderer/color';
+export { isReducedMotionPreferred } from './dom/motion';
 
-const DEFAULT_OPTIONS: Required<Omit<DitherOptions, 'paused'>> & { paused: boolean } = {
-  preset: 'aurora',
-  colors: ['#101124', '#6155ba', '#efb7d2'],
-  dither: 'bayer8',
-  pixelSize: 2.0,
-  scale: 1.0,
-  intensity: 1.0,
-  speed: 0.25,
-  seed: 42,
-  maxDpr: 2.0,
-  resolutionScale: 1.0,
-  paused: false,
-};
-
+/**
+ * Creates an animated or static dithered background attached to target element.
+ *
+ * Architecture Invariants:
+ * - Local canvas mounted inside target DOM subtree with negative local stacking level.
+ * - Single shared scheduler drives all instances and pauses when offscreen or hidden.
+ * - Respects context budget, reduced motion, zero-size targets, and context loss.
+ */
 export function createDither(
   element: HTMLElement,
-  options: DitherOptions = {}
+  userOptions: DitherOptions = {}
 ): DitherInstance {
-  let opts = { ...DEFAULT_OPTIONS, ...options };
+  // Validate and sanitize options
+  let opts: ValidatedDitherOptions = validateOptions(userOptions, DEFAULT_OPTIONS);
 
-  let paused = opts.paused;
-  let rafId: number | null = null;
-  let lastTimestamp: number | null = null;
-  let effectiveTime = 0;
-  let isDestroyed = false;
-  let renderer: WebGL2Renderer | null = null;
+  // Check WebGL Context Budget
+  const hasBudget = acquireContextBudget();
+  if (!hasBudget) {
+    console.warn('[Ditho] Context budget exceeded. Target will remain on CSS fallback.');
+    element.classList.add('dither-host');
+    return createFallbackInstance(element);
+  }
 
-  // Setup host and canvas
+  // Mount host and canvas
+  let dirty = true;
   const hostMount = setupHostCanvas(
     element,
     opts.maxDpr,
     opts.resolutionScale,
-    (_w, _h, dpr) => {
-      // Re-render immediately on resize if paused
-      if (paused && renderer) {
-        renderer.render(effectiveTime, dpr);
-      }
+    () => {
+      dirty = true;
+      requestTick();
     }
   );
 
-  renderer = new WebGL2Renderer(
+  let isContextLost = false;
+  const renderer = new WebGL2Renderer(
     hostMount.canvas,
     {
       preset: opts.preset,
@@ -61,41 +65,89 @@ export function createDither(
       seed: opts.seed,
       resolutionScale: opts.resolutionScale,
     },
+    // On restored
     () => {
-      // When context is restored, draw immediate frame
-      if (renderer) {
-        const dims = hostMount.getDimensions();
-        renderer.render(effectiveTime, dims.dpr);
-      }
+      isContextLost = false;
+      dirty = true;
+      requestTick();
+    },
+    // On lost
+    () => {
+      isContextLost = true;
     }
   );
 
-  const tick = (now: number) => {
-    if (isDestroyed) return;
+  // If WebGL2 context failed to create (unsupported device)
+  if (!renderer.isAvailable()) {
+    releaseContextBudget();
+    hostMount.cleanup();
+    element.classList.add('dither-host');
+    return createFallbackInstance(element);
+  }
 
-    if (lastTimestamp === null) {
-      lastTimestamp = now;
+  // State
+  let paused = opts.paused;
+  let isDestroyed = false;
+  let isIntersecting = true; // Default true so initial draw does not wait for async observer
+  let systemReducedMotion = isReducedMotionPreferred();
+  let effectiveTime = 0;
+
+  // Determine if motion is effectively static
+  const isEffectivelyStatic = (): boolean => {
+    if (opts.speed === 0) return true;
+    if (opts.reducedMotion === 'static' || opts.reducedMotion === 'reduce') return true;
+    if (opts.reducedMotion === 'system' && systemReducedMotion) return true;
+    return false;
+  };
+
+  // Subscribe to runtime OS reduced motion preference changes
+  const unsubscribeMotion = subscribeToMotionPreference((reduced) => {
+    systemReducedMotion = reduced;
+    dirty = true;
+    requestTick();
+  });
+
+  // Subscribe to element viewport intersection
+  const unsubscribeIntersection = observeIntersection(element, (intersecting) => {
+    isIntersecting = intersecting;
+    if (intersecting) {
+      dirty = true;
+      requestTick();
     }
-    const delta = (now - lastTimestamp) / 1000;
-    lastTimestamp = now;
+  });
 
-    if (!paused) {
+  // Register with shared scheduler
+  const { unregister: unregisterScheduler } = registerScheduledTask({
+    isContinuous: () => {
+      if (isDestroyed || paused || isContextLost || !isIntersecting) {
+        return false;
+      }
+      if (!hostMount.hasValidDimensions()) {
+        return false;
+      }
+      return !isEffectivelyStatic();
+    },
+    isDirty: () => {
+      if (isDestroyed || isContextLost) return false;
+      if (!isIntersecting || !hostMount.hasValidDimensions()) return false;
+      return dirty;
+    },
+    measure: () => {
+      if (hostMount.measureIfNeeded()) {
+        dirty = true;
+      }
+    },
+    render: (delta: number) => {
+      if (isDestroyed || isContextLost) return;
       effectiveTime += delta;
       const dims = hostMount.getDimensions();
       renderer.render(effectiveTime, dims.dpr);
-      rafId = requestAnimationFrame(tick);
-    } else {
-      rafId = null;
-    }
-  };
+      dirty = false;
+    },
+  });
 
-  // Initial frame
-  const dims = hostMount.getDimensions();
-  renderer.render(effectiveTime, dims.dpr);
-
-  if (!paused) {
-    rafId = requestAnimationFrame(tick);
-  }
+  // Request initial frame
+  requestTick();
 
   const instance: DitherInstance = {
     element,
@@ -104,56 +156,52 @@ export function createDither(
     update(newOptions: Partial<DitherOptions>) {
       if (isDestroyed) return;
 
-      opts = { ...opts, ...newOptions };
+      opts = validateOptions(newOptions, opts);
 
       if (newOptions.resolutionScale !== undefined) {
-        hostMount.setResolutionScale(newOptions.resolutionScale);
+        hostMount.setResolutionScale(opts.resolutionScale);
       }
 
       renderer.updateConfig({
-        ...(newOptions.preset !== undefined && { preset: newOptions.preset }),
-        ...(newOptions.colors !== undefined && { colors: newOptions.colors }),
-        ...(newOptions.dither !== undefined && { dither: newOptions.dither }),
-        ...(newOptions.pixelSize !== undefined && { pixelSize: newOptions.pixelSize }),
-        ...(newOptions.scale !== undefined && { scale: newOptions.scale }),
-        ...(newOptions.intensity !== undefined && { intensity: newOptions.intensity }),
-        ...(newOptions.speed !== undefined && { speed: newOptions.speed }),
-        ...(newOptions.seed !== undefined && { seed: newOptions.seed }),
-        ...(newOptions.resolutionScale !== undefined && { resolutionScale: newOptions.resolutionScale }),
+        preset: opts.preset,
+        colors: opts.colors,
+        dither: opts.dither,
+        pixelSize: opts.pixelSize,
+        scale: opts.scale,
+        intensity: opts.intensity,
+        speed: opts.speed,
+        seed: opts.seed,
+        resolutionScale: opts.resolutionScale,
       });
 
       if (newOptions.paused !== undefined) {
-        if (newOptions.paused) {
-          instance.pause();
-        } else {
-          instance.resume();
-        }
-      } else if (paused) {
-        // Redraw single static frame with updated options
-        const currentDims = hostMount.getDimensions();
-        renderer.render(effectiveTime, currentDims.dpr);
+        paused = opts.paused;
       }
+
+      dirty = true;
+      requestTick();
     },
 
     pause() {
       if (paused || isDestroyed) return;
       paused = true;
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      lastTimestamp = null;
+      opts.paused = true;
     },
 
     resume() {
       if (!paused || isDestroyed) return;
       paused = false;
-      lastTimestamp = null;
-      rafId = requestAnimationFrame(tick);
+      opts.paused = false;
+      dirty = true;
+      requestTick();
     },
 
     isPaused() {
       return paused;
+    },
+
+    isFallbackActive() {
+      return false;
     },
 
     simulateContextLoss() {
@@ -168,15 +216,33 @@ export function createDither(
       if (isDestroyed) return;
       isDestroyed = true;
 
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
+      unregisterScheduler();
+      unsubscribeIntersection();
+      unsubscribeMotion();
+      releaseContextBudget();
 
-      hostMount.cleanup();
       renderer.dispose();
+      hostMount.cleanup();
     },
   };
 
   return instance;
+}
+
+/**
+ * Creates an empty, non-throwing fallback instance for unsupported environments or exhausted budget.
+ */
+function createFallbackInstance(element: HTMLElement): DitherInstance {
+  return {
+    element,
+    canvas: null,
+    update: () => {},
+    pause: () => {},
+    resume: () => {},
+    destroy: () => {},
+    isPaused: () => true,
+    isFallbackActive: () => true,
+    simulateContextLoss: () => {},
+    restoreContext: () => {},
+  };
 }

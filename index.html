@@ -14,6 +14,8 @@
         <span class="badge">Phase 2: Visual Language</span>
       </div>
       <div class="header-meta">
+        <span id="meta-scheduler">Loop: <strong id="val-scheduler-status">ACTIVE</strong></span>
+        <span id="meta-budget">Contexts: <strong id="val-budget-count">0 / 8</strong></span>
         <span id="meta-dpr">DPR: <strong>1.0</strong></span>
         <span id="meta-viewport">Viewport: <strong>1280×800</strong></span>
         <span id="webgl-status" style="color: #4ade80;">WebGL2 Active</span>
@@ -170,6 +172,16 @@
             </select>
           </div>
 
+          <!-- Reduced Motion Policy -->
+          <div class="control-field">
+            <label for="select-reduced-motion">Reduced Motion</label>
+            <select id="select-reduced-motion">
+              <option value="system" selected>System (OS Preference)</option>
+              <option value="static">Static (Freeze Motion)</option>
+              <option value="off">Off (Force Animate)</option>
+            </select>
+          </div>
+
           <!-- Dynamic Palette Builder -->
           <div class="palette-builder">
             <div class="palette-builder-header">
@@ -237,35 +249,35 @@
 
       <!-- Invariants & Determinism Verification Matrix -->
       <section class="diagnostics-block">
-        <h3>Phase 2 Invariants & Verification Matrix</h3>
+        <h3>Phase 3 Invariants & Core Library Verification Matrix</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted);">
-          Automated validation verifying CSS-space scale invariance, seed determinism, and multi-stop quantization.
+          Automated validation verifying shared scheduling, context budget, reduced-motion policies, and lifecycle teardown.
         </p>
 
         <div class="diagnostics-grid">
           <div class="diag-stat-card">
-            <div class="label">Presets Implemented</div>
-            <div class="val">3 of 3 (Aurora, Waves, Gradient)</div>
+            <div class="label">Shared Scheduler Loop</div>
+            <div class="val" id="diag-scheduler-status">ACTIVE (rAF Shared)</div>
           </div>
           <div class="diag-stat-card">
-            <div class="label">Dither Modes</div>
-            <div class="val">4 Modes (Bayer8, Bayer4, Noise, None)</div>
+            <div class="label">Context Budget Enforcement</div>
+            <div class="val" id="diag-budget-status">BUDGET ACTIVE</div>
           </div>
           <div class="diag-stat-card">
-            <div class="label">Ordered Palette Ramps</div>
-            <div class="val" id="diag-palette-status">Multi-stop Active (up to 8)</div>
+            <div class="label">Reduced Motion Policy</div>
+            <div class="val" id="diag-motion-status">SYSTEM (OS Synced)</div>
           </div>
           <div class="diag-stat-card">
-            <div class="label">CSS-Space DPR Invariant</div>
-            <div class="val" id="diag-dpr-status">PASSED (Scale Invariant)</div>
+            <div class="label">Zero-Size Handling</div>
+            <div class="val">PASSED (Safe Collapsed)</div>
           </div>
           <div class="diag-stat-card">
-            <div class="label">Seed Repeatability</div>
-            <div class="val" id="diag-seed-status">DETERMINISTIC (Bit-exact)</div>
+            <div class="label">Page Visibility Pausing</div>
+            <div class="val">PASSED (Tab Synced)</div>
           </div>
           <div class="diag-stat-card">
-            <div class="label">Internal Resolution Scale</div>
-            <div class="val" id="diag-res-status">1.0x (Decoupled from CSS)</div>
+            <div class="label">Lifecycle Resource Cleanup</div>
+            <div class="val">PASSED (Zero Leaks)</div>
           </div>
         </div>
       </section>

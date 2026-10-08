@@ -1,5 +1,18 @@
-import { createDither, DitherMode, PresetType, DitherOptions } from './index';
+import {
+  createDither,
+  DitherMode,
+  PresetType,
+  DitherOptions,
+  ReducedMotionPolicy,
+  getActiveContextCount,
+  getContextBudget,
+  setContextBudget,
+  isSchedulerActive,
+} from './index';
 import { PRESETS } from './presets';
+
+// Set playground budget high enough to support hero, comparison, and gallery cards simultaneously
+setContextBudget(16);
 
 // State for active hero configuration
 let currentOptions: Required<DitherOptions> = {
@@ -13,6 +26,7 @@ let currentOptions: Required<DitherOptions> = {
   seed: 42,
   maxDpr: 2.0,
   resolutionScale: 1.0,
+  reducedMotion: 'system',
   paused: false,
 };
 
@@ -47,6 +61,7 @@ const valSpeed = document.getElementById('val-speed') as HTMLElement;
 const inputSeed = document.getElementById('input-seed') as HTMLInputElement;
 const btnRandSeed = document.getElementById('btn-rand-seed') as HTMLButtonElement;
 const selectResScale = document.getElementById('select-res-scale') as HTMLSelectElement;
+const selectReducedMotion = document.getElementById('select-reduced-motion') as HTMLSelectElement;
 const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
 const btnResetTime = document.getElementById('btn-reset-time') as HTMLButtonElement;
 const btnContextLoss = document.getElementById('btn-context-loss') as HTMLButtonElement;
@@ -216,6 +231,15 @@ selectResScale.addEventListener('change', (e) => {
   }
 });
 
+selectReducedMotion?.addEventListener('change', (e) => {
+  const policy = (e.target as HTMLSelectElement).value as ReducedMotionPolicy;
+  updateAllInstances({ reducedMotion: policy });
+  const diagMotion = document.getElementById('diag-motion-status');
+  if (diagMotion) {
+    diagMotion.textContent = `${policy.toUpperCase()} (Active)`;
+  }
+});
+
 btnPause.addEventListener('click', () => {
   if (heroDither.isPaused()) {
     heroDither.resume();
@@ -363,7 +387,20 @@ function updateHeaderMeta(): void {
   if (viewportEl) {
     viewportEl.innerHTML = `Viewport: <strong>${window.innerWidth}×${window.innerHeight}</strong>`;
   }
+
+  const budgetEl = document.getElementById('val-budget-count');
+  if (budgetEl) {
+    budgetEl.textContent = `${getActiveContextCount()} / ${getContextBudget()}`;
+  }
+
+  const schedEl = document.getElementById('val-scheduler-status');
+  if (schedEl) {
+    const active = isSchedulerActive();
+    schedEl.textContent = active ? 'ACTIVE' : 'IDLE (Sleeping)';
+    schedEl.style.color = active ? '#4ade80' : '#facc15';
+  }
 }
 
 window.addEventListener('resize', updateHeaderMeta);
 updateHeaderMeta();
+setInterval(updateHeaderMeta, 500);
