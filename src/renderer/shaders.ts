@@ -21,6 +21,7 @@ uniform vec2 u_resolution;       // Canvas buffer size (device pixels)
 uniform float u_dpr;             // Device pixel ratio
 uniform float u_resolutionScale; // Internal rendering resolution scale
 uniform float u_pixelSize;       // Dither cell size in CSS pixels
+uniform vec4 u_borderRadius;     // Corner radii in CSS pixels: vec4(top-left, top-right, bottom-right, bottom-left)
 
 // Dynamics & Field Controls
 uniform float u_time;            // Elapsed time in seconds
@@ -144,6 +145,16 @@ vec3 getPaletteColor(int idx) {
   }
 }
 
+// Signed distance field for rounded box in CSS pixels
+float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
+  float rad = (p.x < 0.0)
+    ? ((p.y < 0.0) ? r.x : r.w)
+    : ((p.y < 0.0) ? r.y : r.z);
+  rad = min(rad, min(b.x, b.y));
+  vec2 q = abs(p) - b + vec2(rad);
+  return min(max(q.x, q.y), 0.0) + length(max(q, vec2(0.0))) - rad;
+}
+
 // Quantize scalar field across ordered palette stops
 vec3 mapPalette(float v, float threshold, int ditherMode) {
   int count = clamp(u_paletteCount, 2, MAX_STOPS);
@@ -173,6 +184,16 @@ void main() {
   float scaleFactor = u_dpr * u_resolutionScale;
   vec2 cssCoord = vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y) / scaleFactor;
   vec2 cssSize = u_resolution / scaleFactor;
+
+  // Shader-level corner clipping: completely discards pixels outside rounded radius
+  // Prevents rectangular canvas tiles flashing during async pan/zoom scrolling in Firefox/Chromium
+  if (u_borderRadius.x > 0.0 || u_borderRadius.y > 0.0 || u_borderRadius.z > 0.0 || u_borderRadius.w > 0.0) {
+    vec2 p = cssCoord - 0.5 * cssSize;
+    vec2 b = 0.5 * cssSize;
+    if (sdRoundedBox(p, b, u_borderRadius) > 0.0) {
+      discard;
+    }
+  }
 
   // Normalized local coordinates centered on element
   vec2 st = (cssCoord - 0.5 * cssSize) / min(cssSize.x, cssSize.y);

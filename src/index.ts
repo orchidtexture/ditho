@@ -15,6 +15,7 @@ export { WebGL2Renderer } from './renderer/webgl2';
 export { setupHostCanvas } from './dom/host';
 export { parseColor, normalizePalette } from './renderer/color';
 export { isReducedMotionPreferred } from './dom/motion';
+export { initDither, parseElementOptions } from './declarative';
 
 /**
  * Creates an animated or static dithered background attached to target element.
@@ -64,6 +65,7 @@ export function createDither(
       speed: opts.speed,
       seed: opts.seed,
       resolutionScale: opts.resolutionScale,
+      borderRadius: hostMount.getBorderRadius(),
     },
     // On restored
     () => {
@@ -135,6 +137,7 @@ export function createDither(
     getFpsLimit: () => opts.fpsLimit,
     measure: () => {
       if (hostMount.measureIfNeeded()) {
+        renderer.updateConfig({ borderRadius: hostMount.getBorderRadius() });
         dirty = true;
       }
     },

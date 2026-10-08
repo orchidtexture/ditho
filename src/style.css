@@ -16,6 +16,7 @@
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
+  clip-path: inset(0 round inherit);
   display: block;
 }
 
@@ -168,6 +169,7 @@ body {
 /* Hero Showcase */
 .hero-stage {
   border-radius: 24px;
+  overflow: hidden;
   padding: 3.5rem 3rem;
   min-height: 440px;
   border: 1px solid rgba(255, 255, 255, 0.15);

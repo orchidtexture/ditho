@@ -292,6 +292,43 @@
         </div>
       </section>
 
+      <!-- Declarative Mode Demo (Phase 5) -->
+      <section style="margin-top: 3.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h3 style="font-size: 1.35rem; font-weight: 700;">Declarative HTML Integration (data-dither)</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">
+              Mount backgrounds without imperative JS using <code>data-dither="preset"</code> attributes and root MutationObserver.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" id="btn-add-declarative">+ Add Declarative Card</button>
+            <button class="btn btn-secondary" id="btn-remove-declarative">- Remove Card</button>
+          </div>
+        </div>
+
+        <div class="preset-gallery-grid" id="declarative-container">
+          <div class="preset-card">
+            <div class="preset-card-host dither-host" data-dither="cyber" data-dither-pixel-size="3" data-dither-speed="0.3">
+              <span style="background: rgba(0,0,0,0.6); padding: 0.4rem 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem;">data-dither="cyber"</span>
+            </div>
+            <div class="preset-card-body">
+              <h4 class="preset-card-title">Declarative Cyber Sunset</h4>
+              <p class="preset-card-desc">Initialized automatically via <code>initDither()</code> and data attributes.</p>
+            </div>
+          </div>
+          <div class="preset-card">
+            <div class="preset-card-host dither-host" data-dither="ocean" data-dither-pixel-size="2" data-dither-speed="0.2">
+              <span style="background: rgba(0,0,0,0.6); padding: 0.4rem 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem;">data-dither="ocean"</span>
+            </div>
+            <div class="preset-card-body">
+              <h4 class="preset-card-title">Declarative Deep Ocean</h4>
+              <p class="preset-card-desc">Tracks DOM mutations, attribute updates, and tree changes seamlessly.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Invariants & Determinism Verification Matrix -->
       <section class="diagnostics-block">
         <h3>Phase 3 Invariants & Core Library Verification Matrix</h3>

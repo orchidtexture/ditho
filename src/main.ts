@@ -1,5 +1,6 @@
 import {
   createDither,
+  initDither,
   DitherMode,
   PresetType,
   DitherOptions,
@@ -13,8 +14,8 @@ import {
 import { PRESETS } from './presets';
 import { runBenchmarkSuite } from './benchmark/benchmark';
 
-// Set playground budget high enough to support hero, comparison, and gallery cards simultaneously
-setContextBudget(16);
+// Set playground budget high enough to support all playground fixtures concurrently
+setContextBudget(24);
 
 // State for active hero configuration
 let currentOptions: ValidatedDitherOptions = {
@@ -485,3 +486,39 @@ btnRunBenchmark?.addEventListener('click', async () => {
     btnRunBenchmark.disabled = false;
   }
 });
+
+// Declarative Mode Setup (Phase 5)
+const declarativeContainer = document.getElementById('declarative-container');
+if (declarativeContainer) {
+  initDither(declarativeContainer);
+
+  const btnAddDeclarative = document.getElementById('btn-add-declarative');
+  const btnRemoveDeclarative = document.getElementById('btn-remove-declarative');
+  const dynamicPresets: PresetType[] = ['aurora', 'waves', 'gradient'];
+  let dynamicCount = 0;
+
+  btnAddDeclarative?.addEventListener('click', () => {
+    dynamicCount++;
+    const preset = dynamicPresets[dynamicCount % dynamicPresets.length];
+    const card = document.createElement('div');
+    card.className = 'preset-card dynamic-declarative';
+    card.innerHTML = `
+      <div class="preset-card-host dither-host" data-dither="${preset}" data-dither-pixel-size="2" data-dither-speed="0.25">
+        <span style="background: rgba(0,0,0,0.6); padding: 0.4rem 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem;">data-dither="${preset}" (Dynamic #${dynamicCount})</span>
+      </div>
+      <div class="preset-card-body">
+        <h4 class="preset-card-title">Dynamic Card #${dynamicCount}</h4>
+        <p class="preset-card-desc">Auto-detected and mounted via MutationObserver without imperative setup.</p>
+      </div>
+    `;
+    declarativeContainer.appendChild(card);
+  });
+
+  btnRemoveDeclarative?.addEventListener('click', () => {
+    const dynamicCards = declarativeContainer.querySelectorAll('.dynamic-declarative');
+    if (dynamicCards.length > 0) {
+      const last = dynamicCards[dynamicCards.length - 1];
+      declarativeContainer.removeChild(last);
+    }
+  });
+}

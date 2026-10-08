@@ -2,10 +2,21 @@ export interface HostMountResult {
   canvas: HTMLCanvasElement;
   cleanup: () => void;
   getDimensions: () => { width: number; height: number; dpr: number; resolutionScale: number };
+  getBorderRadius: () => [number, number, number, number];
   hasValidDimensions: () => boolean;
   setResolutionScale: (scale: number) => void;
   markNeedsMeasure: () => void;
   measureIfNeeded: () => boolean;
+}
+
+export function parseBorderRadius(host: HTMLElement): [number, number, number, number] {
+  if (typeof window === 'undefined') return [0, 0, 0, 0];
+  const style = window.getComputedStyle(host);
+  const tl = parseFloat(style.borderTopLeftRadius) || 0;
+  const tr = parseFloat(style.borderTopRightRadius) || 0;
+  const br = parseFloat(style.borderBottomRightRadius) || 0;
+  const bl = parseFloat(style.borderBottomLeftRadius) || 0;
+  return [tl, tr, br, bl];
 }
 
 /**
@@ -50,6 +61,7 @@ export function setupHostCanvas(
   canvas.style.zIndex = '-1';
   canvas.style.pointerEvents = 'none';
   canvas.style.borderRadius = 'inherit';
+  canvas.style.clipPath = 'inset(0 round inherit)';
   canvas.style.display = 'block';
 
   // Insert canvas as first child so it sits behind DOM content
@@ -59,11 +71,13 @@ export function setupHostCanvas(
   let currentPhysicalHeight = 1;
   let currentDpr = 1;
   let currentResolutionScale = initialResolutionScale;
+  let currentBorderRadius: [number, number, number, number] = [0, 0, 0, 0];
   let isDimensionValid = false;
   let needsMeasurement = true;
 
   const measureAndApply = (): boolean => {
     needsMeasurement = false;
+    currentBorderRadius = parseBorderRadius(host);
     const rect = host.getBoundingClientRect();
 
     // Check for zero-size targets (hidden, detached, or collapsed)
@@ -131,6 +145,7 @@ export function setupHostCanvas(
       dpr: currentDpr,
       resolutionScale: currentResolutionScale,
     }),
+    getBorderRadius: () => currentBorderRadius,
     hasValidDimensions: () => isDimensionValid,
     setResolutionScale: (newScale: number) => {
       currentResolutionScale = Math.max(0.1, Math.min(1.0, newScale));

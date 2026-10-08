@@ -12,6 +12,7 @@ export interface RendererConfig {
   speed: number;
   seed: number;
   resolutionScale: number;
+  borderRadius?: [number, number, number, number];
 }
 
 export class WebGL2Renderer {
@@ -34,6 +35,7 @@ export class WebGL2Renderer {
   private uDitherModeLoc: WebGLUniformLocation | null = null;
   private uPaletteLoc: WebGLUniformLocation | null = null;
   private uPaletteCountLoc: WebGLUniformLocation | null = null;
+  private uBorderRadiusLoc: WebGLUniformLocation | null = null;
 
   // State
   private isContextLost = false;
@@ -92,7 +94,8 @@ export class WebGL2Renderer {
 
   private initGL(): boolean {
     const gl = this.canvas.getContext('webgl2', {
-      alpha: false,
+      alpha: true,
+      premultipliedAlpha: true,
       depth: false,
       stencil: false,
       antialias: false,
@@ -152,6 +155,7 @@ export class WebGL2Renderer {
     this.uDitherModeLoc = gl.getUniformLocation(program, 'u_ditherMode');
     this.uPaletteLoc = gl.getUniformLocation(program, 'u_palette[0]') ?? gl.getUniformLocation(program, 'u_palette');
     this.uPaletteCountLoc = gl.getUniformLocation(program, 'u_paletteCount');
+    this.uBorderRadiusLoc = gl.getUniformLocation(program, 'u_borderRadius');
 
     // Create fullscreen triangle geometry: [-1, -1], [3, -1], [-1, 3]
     const triangleVertices = new Float32Array([
@@ -254,6 +258,10 @@ export class WebGL2Renderer {
     // Multi-stop palette
     gl.uniform3fv(this.uPaletteLoc, this.normalizedPalette.flatArray);
     gl.uniform1i(this.uPaletteCountLoc, this.normalizedPalette.count);
+
+    // Corner clipping in CSS pixels (top-left, top-right, bottom-right, bottom-left)
+    const br = this.config.borderRadius || [0, 0, 0, 0];
+    gl.uniform4f(this.uBorderRadiusLoc, br[0], br[1], br[2], br[3]);
 
     // Begin GPU timer query if supported
     if (this.timerQueryExt && !this.pendingQuery) {
